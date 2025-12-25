@@ -1,0 +1,131 @@
+# OpenTelemetry Collector Configuration
+# Receives traces from services and exports to Jaeger/Zipkin
+
+receivers:
+  # OTLP receiver for gRPC
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+  # Zipkin receiver for backwards compatibility
+  zipkin:
+    endpoint: 0.0.0.0:9411
+
+processors:
+  # Batch processor for efficiency
+  batch:
+    timeout: 1s
+    send_batch_size: 1024
+    send_batch_max_size: 2048
+  
+  # Memory limiter to prevent OOM
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 512
+    spike_limit_mib: 128
+  
+  # Resource processor to add common attributes
+  resource:
+    attributes:
+      - key: deployment.environment
+        value: ${ENVIRONMENT:-development}
+        action: upsert
+      - key: service.namespace
+        value: digital-twin-robotics
+        action: upsert
+  
+  # Probabilistic sampler for high-volume services
+  probabilistic_sampler:
+    sampling_percentage: 100  # 100% in dev, reduce in production
+  
+  # Span processor for attribute manipulation
+  attributes:
+    actions:
+      # Add robot fleet identifier
+      - key: fleet.id
+        value: ${FLEET_ID:-default}
+        action: upsert
+      # Redact sensitive data
+      - key: user.token
+        action: delete
+      - key: auth.password
+        action: delete
+
+exporters:
+  # Jaeger exporter
+  jaeger:
+    endpoint: jaeger:14250
+    tls:
+      insecure: true
+  
+  # OTLP exporter for Tempo or other OTLP backends
+  otlp:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+  
+  # Prometheus exporter for trace metrics
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    namespace: otel
+    const_labels:
+      environment: ${ENVIRONMENT:-development}
+  
+  # Debug exporter for development
+  debug:
+    verbosity: detailed
+    sampling_initial: 5
+    sampling_thereafter: 200
+
+extensions:
+  # Health check endpoint
+  health_check:
+    endpoint: 0.0.0.0:13133
+    path: /health
+  
+  # Performance profiler
+  pprof:
+    endpoint: 0.0.0.0:1777
+  
+  # zPages for debugging
+  zpages:
+    endpoint: 0.0.0.0:55679
+
+service:
+  extensions:
+    - health_check
+    - pprof
+    - zpages
+  
+  pipelines:
+    # Main traces pipeline
+    traces:
+      receivers:
+        - otlp
+        - zipkin
+      processors:
+        - memory_limiter
+        - resource
+        - attributes
+        - batch
+      exporters:
+        - jaeger
+        - otlp
+    
+    # Development pipeline with debug output
+    traces/dev:
+      receivers:
+        - otlp
+      processors:
+        - batch
+      exporters:
+        - debug
+  
+  telemetry:
+    logs:
+      level: info
+    metrics:
+      address: 0.0.0.0:8888

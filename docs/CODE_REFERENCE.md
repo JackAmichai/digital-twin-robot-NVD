@@ -18,6 +18,7 @@
 | `canary/` | Canary deployments | `canary_manager.py` |
 | `features/` | Feature flags | `feature_manager.py` |
 | `experiments/` | A/B testing | `experiment.py` |
+| `core/` | Dependency injection | `container.py` |
 
 ## Module Details
 
@@ -31,3 +32,4 @@ See individual module docs:
 - [Canary Deployments](modules/CANARY.md)
 - [Feature Flags](modules/FEATURES.md)
 - [A/B Testing](modules/EXPERIMENTS.md)
+- [Dependency Injection](modules/CORE.md)

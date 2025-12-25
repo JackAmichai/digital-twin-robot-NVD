@@ -398,12 +398,67 @@ See [PROJECT_ROADMAP.md](PROJECT_ROADMAP.md) for detailed sprint planning.
 
 ---
 
+## 🎬 Demo
+
+<!-- Replace with actual GIF/video after recording -->
+```
+┌────────────────────────────────────────────────────────────┐
+│                                                            │
+│   🎤 "Robot, go to the loading dock"                       │
+│                                                            │
+│   ┌──────────┐    ┌──────────┐    ┌──────────┐            │
+│   │ Riva ASR │───▶│ LLM NIM  │───▶│  Nav2    │            │
+│   │ 150ms    │    │ 200ms    │    │ Planning │            │
+│   └──────────┘    └──────────┘    └──────────┘            │
+│                                          │                 │
+│                                          ▼                 │
+│   ┌────────────────────────────────────────────┐          │
+│   │        Isaac Sim - Warehouse Scene         │          │
+│   │                                            │          │
+│   │     📦      🤖➡️➡️➡️➡️➡️🚛               │          │
+│   │   Storage        Robot      Loading Dock   │          │
+│   │                                            │          │
+│   └────────────────────────────────────────────┘          │
+│                                                            │
+└────────────────────────────────────────────────────────────┘
+```
+
+**Run the interactive demo:**
+```bash
+python scripts/demo.py           # Interactive mode
+python scripts/demo.py --auto    # Automated sequence
+python scripts/demo.py --step    # Step-by-step walkthrough
+```
+
+---
+
+## 🎯 Portfolio Highlights
+
+This project demonstrates expertise in:
+
+| Category | Skills Demonstrated |
+|----------|---------------------|
+| **AI/ML** | LLM prompt engineering, ASR integration, intent classification |
+| **Robotics** | ROS 2 architecture, Nav2 configuration, URDF modeling, TF2 transforms |
+| **Simulation** | Isaac Sim scripting, sensor simulation, physics configuration |
+| **DevOps** | Docker multi-stage builds, Compose orchestration, health checks |
+| **Python** | Async programming, gRPC clients, dataclasses, type hints |
+| **Testing** | pytest integration tests, mocking, CI-ready test suite |
+| **Documentation** | Mermaid diagrams, comprehensive README, video scripts |
+
+**Lines of Code:** ~4,000+ across 40+ files  
+**Technologies:** 15+ integrated components  
+**Architecture:** 3-layer containerized microservices
+
+---
+
 ## 🤝 Contributing
 
-Contributions welcome! Please:
+Contributions welcome! Please see [CONTRIBUTING.md](docs/CONTRIBUTING.md) for guidelines.
+
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
+2. Create a feature branch (`git checkout -b feature/amazing`)
+3. Make your changes with tests
 4. Submit a pull request
 
 ---

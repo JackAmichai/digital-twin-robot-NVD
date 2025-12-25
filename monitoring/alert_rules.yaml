@@ -1,0 +1,435 @@
+# Prometheus Alerting Rules for Digital Twin Robotics Lab
+
+groups:
+  # ==========================================================================
+  # VOICE PROCESSING ALERTS
+  # ==========================================================================
+  - name: voice-processing
+    rules:
+      - alert: HighASRLatency
+        expr: histogram_quantile(0.99, rate(asr_processing_seconds_bucket[5m])) > 2.0
+        for: 5m
+        labels:
+          severity: warning
+          component: asr
+        annotations:
+          summary: "High ASR processing latency"
+          description: "99th percentile ASR latency is {{ $value | printf \"%.2f\" }}s (threshold: 2s)"
+          runbook_url: "https://docs.digital-twin-robotics.io/runbooks/high-asr-latency"
+
+      - alert: ASRErrorRateHigh
+        expr: |
+          sum(rate(asr_requests_total{status="error"}[5m])) 
+          / sum(rate(asr_requests_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          component: asr
+        annotations:
+          summary: "High ASR error rate"
+          description: "ASR error rate is {{ $value | printf \"%.1f\" }}% (threshold: 5%)"
+
+      - alert: WakeWordFalsePositiveSpike
+        expr: rate(wake_word_false_positives_total[10m]) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          component: wake-word
+        annotations:
+          summary: "Elevated wake word false positives"
+          description: "Wake word false positive rate: {{ $value | printf \"%.2f\" }}/sec"
+
+      - alert: TTSSynthesisLatencyHigh
+        expr: histogram_quantile(0.95, rate(tts_synthesis_seconds_bucket[5m])) > 3.0
+        for: 5m
+        labels:
+          severity: warning
+          component: tts
+        annotations:
+          summary: "High TTS synthesis latency"
+          description: "95th percentile TTS latency is {{ $value | printf \"%.2f\" }}s"
+
+  # ==========================================================================
+  # LLM INFERENCE ALERTS
+  # ==========================================================================
+  - name: llm-inference
+    rules:
+      - alert: LLMInferenceLatencyHigh
+        expr: histogram_quantile(0.95, rate(llm_inference_seconds_bucket[5m])) > 5.0
+        for: 5m
+        labels:
+          severity: warning
+          component: nim
+        annotations:
+          summary: "High LLM inference latency"
+          description: "95th percentile LLM latency is {{ $value | printf \"%.2f\" }}s"
+
+      - alert: LLMInferenceErrors
+        expr: |
+          sum(rate(llm_requests_total{status="error"}[5m])) 
+          / sum(rate(llm_requests_total[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+          component: nim
+        annotations:
+          summary: "High LLM inference error rate"
+          description: "LLM error rate is {{ $value | printf \"%.1f\" }}%"
+
+      - alert: LLMThroughputDegraded
+        expr: llm_tokens_per_second < 10
+        for: 10m
+        labels:
+          severity: warning
+          component: nim
+        annotations:
+          summary: "LLM throughput degraded"
+          description: "Token generation throughput: {{ $value | printf \"%.1f\" }} tokens/sec"
+
+      - alert: LLMIntentConfidenceLow
+        expr: histogram_quantile(0.5, rate(llm_intent_confidence_bucket[10m])) < 0.6
+        for: 15m
+        labels:
+          severity: info
+          component: nim
+        annotations:
+          summary: "Low intent extraction confidence"
+          description: "Median intent confidence: {{ $value | printf \"%.2f\" }}"
+
+  # ==========================================================================
+  # ROBOT CONTROL ALERTS
+  # ==========================================================================
+  - name: robot-control
+    rules:
+      - alert: RobotCommandLatencyHigh
+        expr: histogram_quantile(0.95, rate(robot_command_latency_seconds_bucket[5m])) > 1.0
+        for: 5m
+        labels:
+          severity: warning
+          component: robot
+        annotations:
+          summary: "High robot command latency"
+          description: "Robot {{ $labels.robot_id }}: 95th percentile command latency is {{ $value | printf \"%.2f\" }}s"
+
+      - alert: RobotHeartbeatMissing
+        expr: increase(robot_heartbeat_failures_total[2m]) > 3
+        for: 1m
+        labels:
+          severity: critical
+          component: robot
+        annotations:
+          summary: "Robot heartbeat failure"
+          description: "Robot {{ $labels.robot_id }} has missed {{ $value }} heartbeats"
+
+      - alert: RobotBatteryLow
+        expr: robot_battery_percent < 20
+        for: 5m
+        labels:
+          severity: warning
+          component: robot
+        annotations:
+          summary: "Robot battery low"
+          description: "Robot {{ $labels.robot_id }} battery at {{ $value | printf \"%.1f\" }}%"
+
+      - alert: RobotBatteryCritical
+        expr: robot_battery_percent < 10
+        for: 1m
+        labels:
+          severity: critical
+          component: robot
+        annotations:
+          summary: "Robot battery critical"
+          description: "Robot {{ $labels.robot_id }} battery at {{ $value | printf \"%.1f\" }}%"
+
+      - alert: RobotEmergencyStop
+        expr: increase(robot_emergency_stops_total[5m]) > 0
+        labels:
+          severity: critical
+          component: robot
+        annotations:
+          summary: "Robot emergency stop triggered"
+          description: "Robot {{ $labels.robot_id }} emergency stop. Reason: {{ $labels.reason }}"
+
+      - alert: RobotVelocityAbnormal
+        expr: robot_velocity_linear > 2.0 or robot_velocity_angular > 3.0
+        for: 10s
+        labels:
+          severity: warning
+          component: robot
+        annotations:
+          summary: "Robot velocity abnormal"
+          description: "Robot {{ $labels.robot_id }} velocity exceeds safe limits"
+
+  # ==========================================================================
+  # FLEET MANAGEMENT ALERTS
+  # ==========================================================================
+  - name: fleet-management
+    rules:
+      - alert: FleetRobotCountLow
+        expr: fleet_active_robots < 2
+        for: 5m
+        labels:
+          severity: warning
+          component: fleet
+        annotations:
+          summary: "Low active robot count"
+          description: "Fleet {{ $labels.fleet_id }}: only {{ $value }} robots active"
+
+      - alert: FleetTaskQueueBacklog
+        expr: sum by (fleet_id) (fleet_tasks_queued) > 50
+        for: 10m
+        labels:
+          severity: warning
+          component: fleet
+        annotations:
+          summary: "Fleet task queue backlog"
+          description: "Fleet {{ $labels.fleet_id }}: {{ $value }} tasks in queue"
+
+      - alert: FleetTaskFailureRate
+        expr: |
+          sum(rate(fleet_tasks_completed_total{status="failed"}[10m])) by (fleet_id)
+          / sum(rate(fleet_tasks_completed_total[10m])) by (fleet_id) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          component: fleet
+        annotations:
+          summary: "High fleet task failure rate"
+          description: "Fleet {{ $labels.fleet_id }}: {{ $value | printf \"%.1f\" }}% task failure rate"
+
+      - alert: FleetCollisionAvoidanceFrequent
+        expr: rate(fleet_collision_avoidance_events_total[10m]) > 0.5
+        for: 10m
+        labels:
+          severity: info
+          component: fleet
+        annotations:
+          summary: "Frequent collision avoidance events"
+          description: "Fleet {{ $labels.fleet_id }}: collision avoidance rate {{ $value | printf \"%.2f\" }}/min"
+
+  # ==========================================================================
+  # DIGITAL TWIN SIMULATION ALERTS
+  # ==========================================================================
+  - name: simulation
+    rules:
+      - alert: SimulationFPSLow
+        expr: simulation_fps < 30
+        for: 5m
+        labels:
+          severity: warning
+          component: simulation
+        annotations:
+          summary: "Simulation FPS below threshold"
+          description: "Scene {{ $labels.scene }}: {{ $value | printf \"%.1f\" }} FPS"
+
+      - alert: TwinSyncLatencyHigh
+        expr: twin_sync_latency_ms > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: twin-sync
+        annotations:
+          summary: "Digital twin sync latency high"
+          description: "Robot {{ $labels.robot_id }}: {{ $value | printf \"%.1f\" }}ms sync latency"
+
+      - alert: TwinSyncErrors
+        expr: rate(twin_sync_errors_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+          component: twin-sync
+        annotations:
+          summary: "Digital twin sync errors"
+          description: "Robot {{ $labels.robot_id }}: sync errors occurring"
+
+  # ==========================================================================
+  # PREDICTIVE MAINTENANCE ALERTS
+  # ==========================================================================
+  - name: predictive-maintenance
+    rules:
+      - alert: ComponentWearHigh
+        expr: component_wear_percent > 80
+        for: 1h
+        labels:
+          severity: warning
+          component: maintenance
+        annotations:
+          summary: "Component wear high"
+          description: "Robot {{ $labels.robot_id }} {{ $labels.component }}: {{ $value | printf \"%.1f\" }}% wear"
+
+      - alert: ComponentEndOfLifeApproaching
+        expr: component_remaining_useful_life_hours < 48
+        labels:
+          severity: warning
+          component: maintenance
+        annotations:
+          summary: "Component end-of-life approaching"
+          description: "Robot {{ $labels.robot_id }} {{ $labels.component }}: {{ $value | printf \"%.0f\" }} hours RUL"
+
+      - alert: ComponentEndOfLifeCritical
+        expr: component_remaining_useful_life_hours < 12
+        labels:
+          severity: critical
+          component: maintenance
+        annotations:
+          summary: "Component end-of-life critical"
+          description: "Robot {{ $labels.robot_id }} {{ $labels.component }}: only {{ $value | printf \"%.0f\" }} hours RUL"
+
+  # ==========================================================================
+  # INFERENCE SERVER ALERTS
+  # ==========================================================================
+  - name: inference
+    rules:
+      - alert: TritonInferenceLatencyHigh
+        expr: histogram_quantile(0.95, rate(triton_inference_latency_seconds_bucket[5m])) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          component: triton
+        annotations:
+          summary: "Triton inference latency high"
+          description: "Model {{ $labels.model }}: 95th percentile latency {{ $value | printf \"%.3f\" }}s"
+
+      - alert: TritonInferenceErrors
+        expr: |
+          sum(rate(triton_inference_requests_total{status="error"}[5m])) by (model)
+          / sum(rate(triton_inference_requests_total[5m])) by (model) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          component: triton
+        annotations:
+          summary: "Triton inference error rate high"
+          description: "Model {{ $labels.model }}: {{ $value | printf \"%.1f\" }}% error rate"
+
+      - alert: TritonQueueTimeHigh
+        expr: histogram_quantile(0.95, rate(triton_queue_time_seconds_bucket[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: triton
+        annotations:
+          summary: "Triton queue time high"
+          description: "Model {{ $labels.model }}: 95th percentile queue time {{ $value | printf \"%.3f\" }}s"
+
+  # ==========================================================================
+  # GPU & SYSTEM ALERTS
+  # ==========================================================================
+  - name: gpu-system
+    rules:
+      - alert: GPUUtilizationHigh
+        expr: gpu_utilization_percent > 95
+        for: 10m
+        labels:
+          severity: warning
+          component: gpu
+        annotations:
+          summary: "GPU utilization consistently high"
+          description: "GPU {{ $labels.gpu_id }}: {{ $value | printf \"%.1f\" }}% utilization"
+
+      - alert: GPUMemoryPressure
+        expr: gpu_memory_used_bytes / gpu_memory_total_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          component: gpu
+        annotations:
+          summary: "GPU memory pressure"
+          description: "GPU {{ $labels.gpu_id }}: {{ $value | printf \"%.1f\" }}% memory used"
+
+      - alert: GPUTemperatureHigh
+        expr: gpu_temperature_celsius > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: gpu
+        annotations:
+          summary: "GPU temperature high"
+          description: "GPU {{ $labels.gpu_id }}: {{ $value | printf \"%.0f\" }}°C"
+
+      - alert: GPUTemperatureCritical
+        expr: gpu_temperature_celsius > 90
+        for: 1m
+        labels:
+          severity: critical
+          component: gpu
+        annotations:
+          summary: "GPU temperature critical"
+          description: "GPU {{ $labels.gpu_id }}: {{ $value | printf \"%.0f\" }}°C - throttling likely"
+
+      - alert: RedisMemoryHigh
+        expr: redis_memory_used_bytes > 1073741824  # 1GB
+        for: 10m
+        labels:
+          severity: warning
+          component: redis
+        annotations:
+          summary: "Redis memory usage high"
+          description: "Redis using {{ $value | humanize1024 }}B"
+
+  # ==========================================================================
+  # SERVICE HEALTH ALERTS
+  # ==========================================================================
+  - name: service-health
+    rules:
+      - alert: CognitiveServiceDown
+        expr: up{job="cognitive-service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: cognitive
+        annotations:
+          summary: "Cognitive service is down"
+          description: "Cognitive service has been unreachable for 1 minute"
+
+      - alert: RivaServiceDown
+        expr: up{job="nvidia-riva"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: riva
+        annotations:
+          summary: "NVIDIA Riva service is down"
+          description: "Riva ASR/TTS service has been unreachable for 1 minute"
+
+      - alert: NIMServiceDown
+        expr: up{job="nvidia-nim"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: nim
+        annotations:
+          summary: "NVIDIA NIM service is down"
+          description: "NIM LLM service has been unreachable for 1 minute"
+
+      - alert: TritonServiceDown
+        expr: up{job="triton-inference"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: triton
+        annotations:
+          summary: "Triton Inference Server is down"
+          description: "Triton has been unreachable for 1 minute"
+
+      - alert: HighHTTPErrorRate
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m])) by (path)
+          / sum(rate(http_requests_total[5m])) by (path) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "High HTTP error rate"
+          description: "Path {{ $labels.path }}: {{ $value | printf \"%.1f\" }}% 5xx errors"
+
+      - alert: HighHTTPLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 5.0
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "High HTTP request latency"
+          description: "Path {{ $labels.path }}: 95th percentile latency {{ $value | printf \"%.2f\" }}s"

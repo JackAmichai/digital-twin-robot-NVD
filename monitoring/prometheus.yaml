@@ -1,0 +1,182 @@
+# Prometheus Configuration for Digital Twin Robotics Lab
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'digital-twin-robotics'
+    environment: 'production'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# Rule files for alerts
+rule_files:
+  - '/etc/prometheus/rules/*.yaml'
+
+# Scrape configurations
+scrape_configs:
+  # ==========================================================================
+  # COGNITIVE SERVICE METRICS
+  # ==========================================================================
+  - job_name: 'cognitive-service'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['cognitive-service:9090']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '([^:]+):\d+'
+        replacement: '${1}'
+
+  # ==========================================================================
+  # NVIDIA RIVA METRICS
+  # ==========================================================================
+  - job_name: 'nvidia-riva'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['riva:8002']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'riva-asr-tts'
+
+  # ==========================================================================
+  # NVIDIA NIM (LLM) METRICS
+  # ==========================================================================
+  - job_name: 'nvidia-nim'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['nim:8001']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'nim-llm'
+
+  # ==========================================================================
+  # TRITON INFERENCE SERVER METRICS
+  # ==========================================================================
+  - job_name: 'triton-inference'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['triton:8002']
+    metric_relabel_configs:
+      # Keep only relevant Triton metrics
+      - source_labels: [__name__]
+        regex: 'nv_inference.*|nv_gpu.*'
+        action: keep
+
+  # ==========================================================================
+  # ROS 2 / NAV2 METRICS
+  # ==========================================================================
+  - job_name: 'ros2-nav2'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['ros2-bridge:9091']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'ros2-navigation'
+
+  # ==========================================================================
+  # ISAAC SIM METRICS
+  # ==========================================================================
+  - job_name: 'isaac-sim'
+    metrics_path: '/metrics'
+    scrape_interval: 5s  # Higher frequency for real-time simulation
+    static_configs:
+      - targets: ['isaac-sim:9092']
+
+  # ==========================================================================
+  # REDIS METRICS
+  # ==========================================================================
+  - job_name: 'redis'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+
+  # ==========================================================================
+  # NVIDIA GPU METRICS (DCGM)
+  # ==========================================================================
+  - job_name: 'nvidia-dcgm'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['dcgm-exporter:9400']
+    metric_relabel_configs:
+      # Add friendly names
+      - source_labels: [gpu]
+        target_label: gpu_id
+      - source_labels: [__name__]
+        regex: 'DCGM_FI_DEV_GPU_UTIL'
+        target_label: metric_type
+        replacement: 'utilization'
+
+  # ==========================================================================
+  # NODE EXPORTER (HOST METRICS)
+  # ==========================================================================
+  - job_name: 'node-exporter'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '([^:]+):\d+'
+        replacement: '${1}'
+
+  # ==========================================================================
+  # KUBERNETES SERVICE DISCOVERY
+  # ==========================================================================
+  - job_name: 'kubernetes-pods'
+    kubernetes_sd_configs:
+      - role: pod
+    relabel_configs:
+      # Only scrape pods with prometheus.io/scrape annotation
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      # Use custom metrics path if specified
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      # Use custom port if specified
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+        action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        target_label: __address__
+      # Add pod labels
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: kubernetes_namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: kubernetes_pod_name
+
+  # ==========================================================================
+  # BLACKBOX EXPORTER (ENDPOINT PROBING)
+  # ==========================================================================
+  - job_name: 'blackbox-http'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+        - http://cognitive-service:8080/health
+        - http://riva:8000/v1/health/live
+        - http://nim:8000/health
+        - http://triton:8000/v2/health/ready
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115

@@ -20,6 +20,7 @@
 | `experiments/` | A/B testing | `experiment.py` |
 | `core/` | Dependency injection | `container.py` |
 | `resilience/` | Circuit breakers | `circuit_breaker.py` |
+| `ratelimit/` | Rate limiting | `rate_limiter.py` |
 
 ## Module Details
 

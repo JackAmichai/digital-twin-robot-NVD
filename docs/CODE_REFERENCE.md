@@ -16,6 +16,7 @@
 | `backup/` | Backup & recovery | `backup_manager.py` |
 | `cost/` | Cost optimization | `cost_analyzer.py` |
 | `canary/` | Canary deployments | `canary_manager.py` |
+| `features/` | Feature flags | `feature_manager.py` |
 
 ## Module Details
 
@@ -27,3 +28,4 @@ See individual module docs:
 - [Backup & Recovery](modules/BACKUP.md)
 - [Cost Optimization](modules/COST.md)
 - [Canary Deployments](modules/CANARY.md)
+- [Feature Flags](modules/FEATURES.md)

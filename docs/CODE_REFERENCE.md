@@ -15,6 +15,7 @@
 | `security/` | Security scanning | `sast_scanner.py` |
 | `backup/` | Backup & recovery | `backup_manager.py` |
 | `cost/` | Cost optimization | `cost_analyzer.py` |
+| `canary/` | Canary deployments | `canary_manager.py` |
 
 ## Module Details
 
@@ -25,3 +26,4 @@ See individual module docs:
 - [Infrastructure](modules/INFRASTRUCTURE.md)
 - [Backup & Recovery](modules/BACKUP.md)
 - [Cost Optimization](modules/COST.md)
+- [Canary Deployments](modules/CANARY.md)

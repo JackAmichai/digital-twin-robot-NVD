@@ -1,0 +1,79 @@
+site_name: Digital Twin Robotics Lab
+site_description: NVIDIA-powered Digital Twin Platform for Robotics
+site_author: Robotics Team
+repo_url: https://github.com/JackAmichai/digital-twin-robot-NVD
+
+theme:
+  name: material
+  palette:
+    primary: green
+    accent: light green
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - search.suggest
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Quick Start: quickstart.md
+    - Installation: installation.md
+    - Configuration: configuration.md
+  - Core Modules:
+    - Fleet Management: modules/FLEET.md
+    - Voice Processing: modules/VOICE.md
+    - Perception: modules/PERCEPTION.md
+    - Templates: modules/TEMPLATES.md
+    - Scenarios: modules/SCENARIOS.md
+  - Infrastructure:
+    - Overview: modules/INFRASTRUCTURE.md
+    - Edge Deployment: modules/EDGE.md
+    - Service Mesh: modules/SERVICEMESH.md
+    - Logging: modules/LOGGING.md
+  - DevOps:
+    - Canary Deployments: modules/CANARY.md
+    - Backup & Recovery: modules/BACKUP.md
+    - Cost Optimization: modules/COST.md
+  - Security:
+    - Secrets Management: modules/SECRETS.md
+    - Compliance: modules/COMPLIANCE.md
+  - Platform:
+    - Feature Flags: modules/FEATURES.md
+    - A/B Testing: modules/EXPERIMENTS.md
+    - Webhooks: modules/WEBHOOKS.md
+    - Plugins: modules/PLUGINS.md
+    - Multi-tenancy: modules/TENANCY.md
+  - Resilience:
+    - Circuit Breakers: modules/RESILIENCE.md
+    - Rate Limiting: modules/RATELIMIT.md
+  - Extended Reality:
+    - AR/VR: modules/XR.md
+  - API Reference:
+    - Overview: api/overview.md
+    - OpenAPI: api/openapi.md
+  - Code Reference: CODE_REFERENCE.md
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [.]
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/JackAmichai/digital-twin-robot-NVD

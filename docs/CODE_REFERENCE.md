@@ -13,6 +13,8 @@
 | `monitoring/` | Observability | Prometheus, Grafana |
 | `profiling/` | Performance tools | `profiler.py` |
 | `security/` | Security scanning | `sast_scanner.py` |
+| `backup/` | Backup & recovery | `backup_manager.py` |
+| `cost/` | Cost optimization | `cost_analyzer.py` |
 
 ## Module Details
 
@@ -21,3 +23,5 @@ See individual module docs:
 - [Voice Processing](modules/VOICE.md)
 - [Perception](modules/PERCEPTION.md)
 - [Infrastructure](modules/INFRASTRUCTURE.md)
+- [Backup & Recovery](modules/BACKUP.md)
+- [Cost Optimization](modules/COST.md)

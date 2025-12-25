@@ -1,0 +1,124 @@
+# =============================================================================
+# Warehouse Environment Configuration
+# =============================================================================
+# Configuration for the simulated warehouse environment
+
+environment:
+  name: "Digital Twin Warehouse"
+  type: "warehouse"
+  
+  # World settings
+  world:
+    units: "meters"
+    up_axis: "Z"
+    gravity: [0.0, 0.0, -9.81]
+    
+  # Ground plane
+  ground:
+    size: [50.0, 50.0]
+    material: "concrete"
+    friction: 0.8
+    
+  # Lighting
+  lighting:
+    type: "dome"
+    intensity: 1000
+    color_temperature: 5500
+    
+# Zone definitions (matching cognitive service)
+zones:
+  zone_a:
+    position: [0.0, 0.0, 0.0]
+    size: [4.0, 4.0]
+    type: "start"
+    color: [0.2, 0.8, 0.2]  # Green
+    
+  zone_b:
+    position: [10.0, 0.0, 0.0]
+    size: [4.0, 4.0]
+    type: "loading"
+    color: [0.2, 0.2, 0.8]  # Blue
+    
+  zone_c:
+    position: [10.0, 10.0, 0.0]
+    size: [4.0, 4.0]
+    type: "storage"
+    color: [0.8, 0.8, 0.2]  # Yellow
+    
+# Shelf placements
+shelves:
+  north_shelf:
+    position: [5.0, 15.0, 0.0]
+    rotation: [0, 0, 0]
+    size: [6.0, 1.0, 2.5]
+    levels: 3
+    
+  south_shelf:
+    position: [5.0, -5.0, 0.0]
+    rotation: [0, 0, 0]
+    size: [6.0, 1.0, 2.5]
+    levels: 3
+    
+  east_shelf:
+    position: [18.0, 5.0, 0.0]
+    rotation: [0, 0, 90]
+    size: [6.0, 1.0, 2.5]
+    levels: 3
+
+# Obstacles (dynamic)
+obstacles:
+  forklift_1:
+    type: "forklift"
+    position: [7.0, 5.0, 0.0]
+    rotation: [0, 0, 45]
+    dynamic: true
+    
+  pallet_stack:
+    type: "pallet"
+    position: [12.0, 3.0, 0.0]
+    rotation: [0, 0, 0]
+    dynamic: false
+    
+  crate_1:
+    type: "crate"
+    position: [3.0, 8.0, 0.0]
+    rotation: [0, 0, 15]
+    dynamic: false
+
+# Robot spawn configuration
+robot_spawn:
+  position: [0.0, 0.0, 0.1]
+  rotation: [0, 0, 0]
+  
+# Sensor configuration
+sensors:
+  lidar:
+    enabled: true
+    topic: "/scan"
+    frame_id: "lidar_link"
+    range_min: 0.1
+    range_max: 30.0
+    num_rays: 360
+    scan_rate: 10.0
+    
+  camera:
+    enabled: true
+    topic: "/camera/rgb"
+    frame_id: "camera_link"
+    width: 640
+    height: 480
+    fov: 60
+    fps: 30
+    
+  depth_camera:
+    enabled: true
+    topic: "/camera/depth"
+    frame_id: "camera_link"
+    width: 640
+    height: 480
+    
+  imu:
+    enabled: true
+    topic: "/imu"
+    frame_id: "base_link"
+    rate: 100.0

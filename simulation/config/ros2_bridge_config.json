@@ -1,0 +1,83 @@
+{
+    "isaac_ros2_bridge": {
+        "enabled": true,
+        "ros_domain_id": 0,
+        "rmw_implementation": "rmw_fastrtps_cpp",
+        "use_sim_time": true,
+        
+        "publishers": {
+            "odometry": {
+                "topic": "/odom",
+                "frame_id": "odom",
+                "child_frame_id": "base_link",
+                "rate": 50
+            },
+            "lidar": {
+                "topic": "/scan",
+                "frame_id": "lidar_link",
+                "rate": 10
+            },
+            "camera_rgb": {
+                "topic": "/camera/rgb/image_raw",
+                "frame_id": "camera_optical_frame",
+                "rate": 30
+            },
+            "camera_info": {
+                "topic": "/camera/rgb/camera_info",
+                "frame_id": "camera_optical_frame",
+                "rate": 30
+            },
+            "camera_depth": {
+                "topic": "/camera/depth/image_raw",
+                "frame_id": "camera_optical_frame",
+                "rate": 30
+            },
+            "imu": {
+                "topic": "/imu",
+                "frame_id": "base_link",
+                "rate": 100
+            },
+            "tf": {
+                "topic": "/tf",
+                "rate": 50
+            },
+            "clock": {
+                "topic": "/clock",
+                "rate": 100
+            }
+        },
+        
+        "subscribers": {
+            "cmd_vel": {
+                "topic": "/cmd_vel",
+                "type": "geometry_msgs/msg/Twist"
+            },
+            "goal_pose": {
+                "topic": "/goal_pose",
+                "type": "geometry_msgs/msg/PoseStamped"
+            }
+        },
+        
+        "services": {
+            "reset_simulation": {
+                "service": "/reset_simulation",
+                "type": "std_srvs/srv/Empty"
+            }
+        },
+        
+        "qos_profiles": {
+            "sensor_data": {
+                "reliability": "best_effort",
+                "durability": "volatile",
+                "history": "keep_last",
+                "depth": 5
+            },
+            "reliable": {
+                "reliability": "reliable",
+                "durability": "transient_local",
+                "history": "keep_last",
+                "depth": 10
+            }
+        }
+    }
+}

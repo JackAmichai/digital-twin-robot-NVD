@@ -1,0 +1,91 @@
+# =============================================================================
+# Robot Simulation Configuration
+# =============================================================================
+# Configuration for robot physics and control in Isaac Sim
+
+robot:
+  name: "dt_robot"
+  type: "differential_drive"
+  
+  # Physical properties
+  physics:
+    mass: 15.0  # kg
+    center_of_mass: [0.0, 0.0, 0.05]
+    
+  # Base dimensions
+  base:
+    length: 0.5
+    width: 0.4
+    height: 0.2
+    
+  # Wheel configuration
+  wheels:
+    radius: 0.08
+    width: 0.04
+    separation: 0.44
+    max_velocity: 2.0  # rad/s
+    max_torque: 10.0   # Nm
+    
+  # Caster wheel
+  caster:
+    radius: 0.04
+    position: [0.2, 0.0, -0.06]
+    
+# Controller configuration
+controller:
+  type: "differential"
+  
+  # Velocity limits
+  max_linear_velocity: 0.5   # m/s
+  max_angular_velocity: 1.0  # rad/s
+  
+  # Acceleration limits
+  max_linear_acceleration: 2.5   # m/s^2
+  max_angular_acceleration: 3.2  # rad/s^2
+  
+  # PID gains for wheel control
+  pid:
+    p: 10.0
+    i: 0.1
+    d: 0.5
+
+# ROS 2 interface
+ros2:
+  # Command input
+  cmd_vel:
+    topic: "/cmd_vel"
+    type: "geometry_msgs/Twist"
+    qos: "best_effort"
+    
+  # Odometry output
+  odom:
+    topic: "/odom"
+    type: "nav_msgs/Odometry"
+    frame_id: "odom"
+    child_frame_id: "base_link"
+    publish_rate: 50.0
+    
+  # Transform publishing
+  tf:
+    publish_odom_tf: true
+    odom_frame: "odom"
+    base_frame: "base_link"
+    
+  # Joint states
+  joint_states:
+    topic: "/joint_states"
+    publish_rate: 50.0
+
+# Collision configuration
+collision:
+  enabled: true
+  layers:
+    - "robot"
+    - "environment"
+  contact_reporting: true
+  
+# Ground truth (for debugging)
+ground_truth:
+  enabled: true
+  topic: "/ground_truth/odom"
+  publish_rate: 100.0

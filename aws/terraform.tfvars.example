@@ -1,0 +1,32 @@
+# Terraform Example Configuration
+# Copy this file to terraform.tfvars and fill in your values
+
+# AWS Region (choose one close to you)
+aws_region = "us-east-1"
+
+# Environment name (used as prefix for all resources)
+environment_name = "digital-twin-robotics"
+
+# EC2 Instance Type
+# Options:
+#   g4dn.xlarge  - T4 16GB  - $0.53/hr - Budget option
+#   g4dn.2xlarge - T4 16GB  - $0.75/hr - More CPU/RAM
+#   g5.xlarge    - A10G 24GB - $1.01/hr - RECOMMENDED
+#   g5.2xlarge   - A10G 24GB - $1.21/hr - More CPU/RAM
+#   p3.2xlarge   - V100 16GB - $3.06/hr - High performance
+instance_type = "g5.xlarge"
+
+# Your EC2 Key Pair name (create in AWS Console first)
+key_pair_name = "your-key-pair-name"
+
+# EBS Volume size in GB (100-1000)
+volume_size = 200
+
+# Your IP address for SSH access (find at whatismyip.com, add /32)
+# IMPORTANT: For security, replace with your actual IP
+allowed_ssh_cidr = "0.0.0.0/0"  # Change to "YOUR.IP.HERE/32"
+
+# NVIDIA API Keys (optional - can add later via .env file)
+# Get these from: https://build.nvidia.com
+ngc_api_key = ""
+nim_api_key = ""

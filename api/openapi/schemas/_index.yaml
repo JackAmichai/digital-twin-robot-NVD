@@ -1,0 +1,77 @@
+# Schema Index - References all schemas
+
+# Health Schemas
+HealthStatus:
+  $ref: './health.yaml#/HealthStatus'
+
+# Voice Schemas
+TranscriptionResult:
+  $ref: './voice.yaml#/TranscriptionResult'
+WakeWordResult:
+  $ref: './voice.yaml#/WakeWordResult'
+Language:
+  $ref: './voice.yaml#/Language'
+
+# Robot Schemas
+Robot:
+  $ref: './robot.yaml#/Robot'
+RobotDetail:
+  $ref: './robot.yaml#/RobotDetail'
+RobotRegistration:
+  $ref: './robot.yaml#/RobotRegistration'
+RobotUpdate:
+  $ref: './robot.yaml#/RobotUpdate'
+RobotCommand:
+  $ref: './robot.yaml#/RobotCommand'
+CommandResponse:
+  $ref: './robot.yaml#/CommandResponse'
+RobotStatus:
+  $ref: './robot.yaml#/RobotStatus'
+TelemetryData:
+  $ref: './robot.yaml#/TelemetryData'
+
+# Fleet Schemas
+FleetStatus:
+  $ref: './fleet.yaml#/FleetStatus'
+Task:
+  $ref: './fleet.yaml#/Task'
+TaskDetail:
+  $ref: './fleet.yaml#/TaskDetail'
+TaskCreate:
+  $ref: './fleet.yaml#/TaskCreate'
+TaskUpdate:
+  $ref: './fleet.yaml#/TaskUpdate'
+AllocationResult:
+  $ref: './fleet.yaml#/AllocationResult'
+
+# Simulation Schemas
+SimulationStatus:
+  $ref: './simulation.yaml#/SimulationStatus'
+SyncResult:
+  $ref: './simulation.yaml#/SyncResult'
+SyncStatus:
+  $ref: './simulation.yaml#/SyncStatus'
+Scenario:
+  $ref: './simulation.yaml#/Scenario'
+ScenarioDetail:
+  $ref: './simulation.yaml#/ScenarioDetail'
+ScenarioCreate:
+  $ref: './simulation.yaml#/ScenarioCreate'
+
+# Cognitive Schemas
+IntentResult:
+  $ref: './cognitive.yaml#/IntentResult'
+Conversation:
+  $ref: './cognitive.yaml#/Conversation'
+ConversationResponse:
+  $ref: './cognitive.yaml#/ConversationResponse'
+
+# Common Schemas
+Error:
+  $ref: './common.yaml#/Error'
+Position:
+  $ref: './common.yaml#/Position'
+Orientation:
+  $ref: './common.yaml#/Orientation'
+Timestamp:
+  $ref: './common.yaml#/Timestamp'

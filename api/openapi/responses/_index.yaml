@@ -1,0 +1,18 @@
+# Response Index
+
+BadRequest:
+  $ref: './errors.yaml#/BadRequest'
+Unauthorized:
+  $ref: './errors.yaml#/Unauthorized'
+Forbidden:
+  $ref: './errors.yaml#/Forbidden'
+NotFound:
+  $ref: './errors.yaml#/NotFound'
+Conflict:
+  $ref: './errors.yaml#/Conflict'
+TooManyRequests:
+  $ref: './errors.yaml#/TooManyRequests'
+InternalError:
+  $ref: './errors.yaml#/InternalError'
+ServiceUnavailable:
+  $ref: './errors.yaml#/ServiceUnavailable'

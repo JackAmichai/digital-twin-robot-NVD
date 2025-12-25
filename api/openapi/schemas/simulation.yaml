@@ -1,0 +1,308 @@
+# Simulation Schemas
+
+SimulationStatus:
+  type: object
+  required:
+    - status
+  properties:
+    status:
+      type: string
+      enum:
+        - running
+        - paused
+        - stopped
+        - error
+    simulation_time:
+      type: string
+      format: date-time
+      description: Current time in simulation
+    real_time_factor:
+      type: number
+      description: Ratio of simulation time to real time
+    physics_fps:
+      type: integer
+      description: Physics simulation frames per second
+    render_fps:
+      type: integer
+      description: Rendering frames per second
+    active_robots:
+      type: integer
+      description: Number of robots in simulation
+    active_objects:
+      type: integer
+      description: Number of dynamic objects
+    sync_status:
+      type: string
+      enum:
+        - synchronized
+        - syncing
+        - out_of_sync
+        - error
+    last_sync:
+      type: string
+      format: date-time
+    sync_latency_ms:
+      type: integer
+      description: Average sync latency
+    gpu_usage:
+      type: number
+      minimum: 0
+      maximum: 100
+    memory_usage_gb:
+      type: number
+
+SyncResult:
+  type: object
+  required:
+    - status
+  properties:
+    status:
+      type: string
+      enum:
+        - completed
+        - partial
+        - failed
+    synced_robots:
+      type: integer
+    sync_duration_ms:
+      type: integer
+    discrepancies:
+      type: array
+      items:
+        type: object
+        properties:
+          robot_id:
+            type: string
+          type:
+            type: string
+            enum:
+              - position
+              - orientation
+              - state
+          physical_value:
+            type: string
+          simulation_value:
+            type: string
+          resolved:
+            type: boolean
+    errors:
+      type: array
+      items:
+        type: string
+
+SyncStatus:
+  type: object
+  properties:
+    current_status:
+      type: string
+      enum:
+        - synchronized
+        - syncing
+        - out_of_sync
+        - error
+    last_sync:
+      type: string
+      format: date-time
+    next_sync:
+      type: string
+      format: date-time
+    sync_interval_ms:
+      type: integer
+    sync_mode:
+      type: string
+      enum:
+        - bidirectional
+        - to_simulation
+        - to_physical
+    history:
+      type: array
+      items:
+        $ref: '#/SyncResult'
+
+Scenario:
+  type: object
+  required:
+    - id
+    - name
+    - category
+  properties:
+    id:
+      type: string
+    name:
+      type: string
+    description:
+      type: string
+    category:
+      type: string
+      enum:
+        - training
+        - testing
+        - demo
+        - production
+    duration_seconds:
+      type: integer
+      description: Expected duration
+    robot_count:
+      type: integer
+    complexity:
+      type: string
+      enum:
+        - simple
+        - moderate
+        - complex
+    created_at:
+      type: string
+      format: date-time
+    tags:
+      type: array
+      items:
+        type: string
+
+ScenarioDetail:
+  allOf:
+    - $ref: '#/Scenario'
+    - type: object
+      properties:
+        environment:
+          type: object
+          properties:
+            name:
+              type: string
+            size:
+              type: object
+              properties:
+                width:
+                  type: number
+                height:
+                  type: number
+                depth:
+                  type: number
+            obstacles:
+              type: integer
+        robots:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+              initial_position:
+                $ref: './common.yaml#/Position'
+              tasks:
+                type: array
+                items:
+                  type: string
+        events:
+          type: array
+          items:
+            type: object
+            properties:
+              time_offset_seconds:
+                type: number
+              event_type:
+                type: string
+              parameters:
+                type: object
+                additionalProperties: true
+        success_criteria:
+          type: array
+          items:
+            type: object
+            properties:
+              metric:
+                type: string
+              operator:
+                type: string
+                enum:
+                  - equals
+                  - greater_than
+                  - less_than
+                  - between
+              value:
+                type: number
+        execution_history:
+          type: array
+          items:
+            type: object
+            properties:
+              execution_id:
+                type: string
+              started_at:
+                type: string
+                format: date-time
+              completed_at:
+                type: string
+                format: date-time
+              success:
+                type: boolean
+              metrics:
+                type: object
+                additionalProperties:
+                  type: number
+
+ScenarioCreate:
+  type: object
+  required:
+    - name
+    - category
+  properties:
+    name:
+      type: string
+    description:
+      type: string
+    category:
+      type: string
+      enum:
+        - training
+        - testing
+        - demo
+        - production
+    environment:
+      type: object
+      properties:
+        template:
+          type: string
+        custom_config:
+          type: object
+          additionalProperties: true
+    robots:
+      type: array
+      items:
+        type: object
+        properties:
+          type:
+            type: string
+          count:
+            type: integer
+            default: 1
+          initial_positions:
+            type: array
+            items:
+              $ref: './common.yaml#/Position'
+    events:
+      type: array
+      items:
+        type: object
+        properties:
+          time_offset_seconds:
+            type: number
+          event_type:
+            type: string
+          parameters:
+            type: object
+            additionalProperties: true
+    success_criteria:
+      type: array
+      items:
+        type: object
+        properties:
+          metric:
+            type: string
+          operator:
+            type: string
+          value:
+            type: number
+    tags:
+      type: array
+      items:
+        type: string

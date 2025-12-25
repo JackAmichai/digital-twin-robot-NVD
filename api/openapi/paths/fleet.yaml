@@ -1,0 +1,237 @@
+# Fleet Management Endpoints
+
+fleet-status:
+  get:
+    tags:
+      - Fleet
+    summary: Get fleet status
+    description: Get overall status of the robot fleet
+    operationId: getFleetStatus
+    responses:
+      '200':
+        description: Fleet status
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/fleet.yaml#/FleetStatus'
+            example:
+              total_robots: 10
+              online: 8
+              offline: 1
+              busy: 5
+              idle: 3
+              error: 1
+              active_tasks: 12
+              pending_tasks: 5
+              completed_today: 47
+
+fleet-tasks:
+  get:
+    tags:
+      - Fleet
+    summary: List fleet tasks
+    description: Get list of all tasks in the fleet queue
+    operationId: listFleetTasks
+    parameters:
+      - name: status
+        in: query
+        description: Filter by task status
+        schema:
+          type: string
+          enum:
+            - pending
+            - assigned
+            - in_progress
+            - completed
+            - failed
+            - cancelled
+      - name: priority
+        in: query
+        description: Filter by priority
+        schema:
+          type: string
+          enum:
+            - low
+            - normal
+            - high
+            - critical
+      - name: robot_id
+        in: query
+        description: Filter by assigned robot
+        schema:
+          type: string
+      - $ref: '../parameters/common.yaml#/PageSize'
+      - $ref: '../parameters/common.yaml#/PageToken'
+    responses:
+      '200':
+        description: List of tasks
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tasks:
+                  type: array
+                  items:
+                    $ref: '../schemas/fleet.yaml#/Task'
+                next_page_token:
+                  type: string
+                total_count:
+                  type: integer
+
+  post:
+    tags:
+      - Fleet
+    summary: Create a new task
+    description: Create a new task to be assigned to a robot
+    operationId: createTask
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/fleet.yaml#/TaskCreate'
+          example:
+            name: "Transport materials to Station B"
+            type: "transport"
+            priority: "high"
+            parameters:
+              source_location: "warehouse-a"
+              destination_location: "station-b"
+              payload_type: "raw_materials"
+              weight_kg: 25
+            constraints:
+              deadline: "2025-12-25T12:00:00Z"
+              required_capabilities:
+                - "heavy_lift"
+                - "indoor_navigation"
+    responses:
+      '201':
+        description: Task created
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/fleet.yaml#/Task'
+      '400':
+        $ref: '../responses/errors.yaml#/BadRequest'
+
+task-by-id:
+  get:
+    tags:
+      - Fleet
+    summary: Get task by ID
+    description: Get detailed information about a specific task
+    operationId: getTaskById
+    parameters:
+      - $ref: '../parameters/common.yaml#/TaskId'
+    responses:
+      '200':
+        description: Task details
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/fleet.yaml#/TaskDetail'
+      '404':
+        $ref: '../responses/errors.yaml#/NotFound'
+
+  patch:
+    tags:
+      - Fleet
+    summary: Update task
+    description: Update task properties (only pending tasks can be modified)
+    operationId: updateTask
+    parameters:
+      - $ref: '../parameters/common.yaml#/TaskId'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/fleet.yaml#/TaskUpdate'
+    responses:
+      '200':
+        description: Task updated
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/fleet.yaml#/Task'
+      '400':
+        $ref: '../responses/errors.yaml#/BadRequest'
+      '404':
+        $ref: '../responses/errors.yaml#/NotFound'
+      '409':
+        description: Task cannot be modified in current state
+
+  delete:
+    tags:
+      - Fleet
+    summary: Cancel task
+    description: Cancel a pending or assigned task
+    operationId: cancelTask
+    parameters:
+      - $ref: '../parameters/common.yaml#/TaskId'
+    responses:
+      '204':
+        description: Task cancelled
+      '404':
+        $ref: '../responses/errors.yaml#/NotFound'
+      '409':
+        description: Task cannot be cancelled (already in progress or completed)
+
+allocate:
+  post:
+    tags:
+      - Fleet
+    summary: Allocate tasks to robots
+    description: |
+      Trigger task allocation algorithm to assign pending tasks to available robots.
+      
+      Allocation strategies:
+      - **nearest**: Assign to nearest available robot
+      - **least_busy**: Assign to robot with fewest tasks
+      - **optimal**: Use optimization algorithm for best overall efficiency
+      - **manual**: Respect manual robot assignments only
+    operationId: allocateTasks
+    requestBody:
+      required: false
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              strategy:
+                type: string
+                enum:
+                  - nearest
+                  - least_busy
+                  - optimal
+                  - manual
+                default: optimal
+              task_ids:
+                type: array
+                items:
+                  type: string
+                description: Specific tasks to allocate (empty = all pending)
+              robot_ids:
+                type: array
+                items:
+                  type: string
+                description: Robots to consider (empty = all available)
+    responses:
+      '200':
+        description: Allocation results
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/fleet.yaml#/AllocationResult'
+            example:
+              allocated_count: 5
+              unallocated_count: 2
+              allocations:
+                - task_id: "task-001"
+                  robot_id: "robot-003"
+                  estimated_start: "2025-12-25T10:35:00Z"
+                  estimated_duration_ms: 180000
+              unallocated_reasons:
+                - task_id: "task-006"
+                  reason: "No robot with required capabilities available"

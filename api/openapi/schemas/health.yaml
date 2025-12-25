@@ -1,0 +1,36 @@
+# Health Schemas
+
+HealthStatus:
+  type: object
+  required:
+    - status
+    - timestamp
+  properties:
+    status:
+      type: string
+      enum:
+        - healthy
+        - degraded
+        - unhealthy
+      description: Overall system health status
+    version:
+      type: string
+      description: API version
+    timestamp:
+      type: string
+      format: date-time
+      description: Time of health check
+    services:
+      type: object
+      description: Status of individual services
+      additionalProperties:
+        type: string
+        enum:
+          - healthy
+          - degraded
+          - unhealthy
+          - unknown
+    details:
+      type: object
+      additionalProperties: true
+      description: Additional health details

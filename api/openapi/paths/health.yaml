@@ -1,0 +1,75 @@
+# Health Endpoints
+
+health:
+  get:
+    tags:
+      - Health
+    summary: Overall health check
+    description: Returns the overall health status of the system
+    operationId: getHealth
+    security: []
+    responses:
+      '200':
+        description: System is healthy
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/health.yaml#/HealthStatus'
+            example:
+              status: healthy
+              version: "1.0.0"
+              timestamp: "2025-12-25T10:30:00Z"
+              services:
+                voice: healthy
+                robot: healthy
+                fleet: healthy
+                simulation: healthy
+                cognitive: healthy
+      '503':
+        description: System is unhealthy
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/health.yaml#/HealthStatus'
+
+ready:
+  get:
+    tags:
+      - Health
+    summary: Readiness probe
+    description: Kubernetes readiness probe - checks if service is ready to accept traffic
+    operationId: getReadiness
+    security: []
+    responses:
+      '200':
+        description: Service is ready
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ready:
+                  type: boolean
+                  example: true
+      '503':
+        description: Service is not ready
+
+live:
+  get:
+    tags:
+      - Health
+    summary: Liveness probe
+    description: Kubernetes liveness probe - checks if service is alive
+    operationId: getLiveness
+    security: []
+    responses:
+      '200':
+        description: Service is alive
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                alive:
+                  type: boolean
+                  example: true

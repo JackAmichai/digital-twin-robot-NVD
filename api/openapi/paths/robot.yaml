@@ -1,0 +1,280 @@
+# Robot Control Endpoints
+
+robots:
+  get:
+    tags:
+      - Robot
+    summary: List all robots
+    description: Get a list of all registered robots with their current status
+    operationId: listRobots
+    parameters:
+      - name: status
+        in: query
+        description: Filter by robot status
+        schema:
+          type: string
+          enum:
+            - online
+            - offline
+            - busy
+            - error
+            - maintenance
+      - name: type
+        in: query
+        description: Filter by robot type
+        schema:
+          type: string
+      - $ref: '../parameters/common.yaml#/PageSize'
+      - $ref: '../parameters/common.yaml#/PageToken'
+    responses:
+      '200':
+        description: List of robots
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                robots:
+                  type: array
+                  items:
+                    $ref: '../schemas/robot.yaml#/Robot'
+                next_page_token:
+                  type: string
+                total_count:
+                  type: integer
+            example:
+              robots:
+                - id: "robot-001"
+                  name: "Assembly Arm Alpha"
+                  type: "industrial_arm"
+                  status: "online"
+                  battery_level: 85
+                  position:
+                    x: 10.5
+                    y: 5.2
+                    z: 0.0
+                - id: "robot-002"
+                  name: "Mobile Base Beta"
+                  type: "mobile_robot"
+                  status: "busy"
+                  battery_level: 62
+              total_count: 2
+
+  post:
+    tags:
+      - Robot
+    summary: Register a new robot
+    description: Register a new robot in the system
+    operationId: registerRobot
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/robot.yaml#/RobotRegistration'
+    responses:
+      '201':
+        description: Robot registered successfully
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/robot.yaml#/Robot'
+      '400':
+        $ref: '../responses/errors.yaml#/BadRequest'
+      '409':
+        description: Robot with this ID already exists
+
+robot-by-id:
+  get:
+    tags:
+      - Robot
+    summary: Get robot by ID
+    description: Get detailed information about a specific robot
+    operationId: getRobotById
+    parameters:
+      - $ref: '../parameters/common.yaml#/RobotId'
+    responses:
+      '200':
+        description: Robot details
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/robot.yaml#/RobotDetail'
+      '404':
+        $ref: '../responses/errors.yaml#/NotFound'
+
+  patch:
+    tags:
+      - Robot
+    summary: Update robot
+    description: Update robot configuration or metadata
+    operationId: updateRobot
+    parameters:
+      - $ref: '../parameters/common.yaml#/RobotId'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/robot.yaml#/RobotUpdate'
+    responses:
+      '200':
+        description: Robot updated
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/robot.yaml#/Robot'
+      '404':
+        $ref: '../responses/errors.yaml#/NotFound'
+
+  delete:
+    tags:
+      - Robot
+    summary: Unregister robot
+    description: Remove a robot from the system
+    operationId: unregisterRobot
+    parameters:
+      - $ref: '../parameters/common.yaml#/RobotId'
+    responses:
+      '204':
+        description: Robot unregistered
+      '404':
+        $ref: '../responses/errors.yaml#/NotFound'
+
+robot-command:
+  post:
+    tags:
+      - Robot
+    summary: Send command to robot
+    description: |
+      Send a command to a specific robot for execution.
+      
+      Commands can be:
+      - Navigation commands (move, rotate, stop)
+      - Manipulation commands (pick, place, grip)
+      - System commands (pause, resume, emergency_stop)
+    operationId: sendRobotCommand
+    parameters:
+      - $ref: '../parameters/common.yaml#/RobotId'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/robot.yaml#/RobotCommand'
+          examples:
+            navigation:
+              summary: Navigation command
+              value:
+                command_type: navigate
+                parameters:
+                  target_position:
+                    x: 15.0
+                    y: 8.0
+                    z: 0.0
+                  speed: 0.5
+                  avoid_obstacles: true
+                priority: normal
+            manipulation:
+              summary: Manipulation command
+              value:
+                command_type: pick
+                parameters:
+                  object_id: "obj-123"
+                  gripper_force: 50
+                priority: high
+            emergency:
+              summary: Emergency stop
+              value:
+                command_type: emergency_stop
+                priority: critical
+    responses:
+      '202':
+        description: Command accepted
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/robot.yaml#/CommandResponse'
+            example:
+              command_id: "cmd-abc123"
+              status: "accepted"
+              estimated_duration_ms: 5000
+      '400':
+        $ref: '../responses/errors.yaml#/BadRequest'
+      '404':
+        $ref: '../responses/errors.yaml#/NotFound'
+      '409':
+        description: Robot is busy or in error state
+      '503':
+        description: Robot is offline
+
+robot-status:
+  get:
+    tags:
+      - Robot
+    summary: Get robot status
+    description: Get current status and state of a robot
+    operationId: getRobotStatus
+    parameters:
+      - $ref: '../parameters/common.yaml#/RobotId'
+    responses:
+      '200':
+        description: Robot status
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/robot.yaml#/RobotStatus'
+            example:
+              robot_id: "robot-001"
+              status: "busy"
+              current_task: "task-456"
+              battery_level: 78
+              position:
+                x: 12.3
+                y: 6.7
+                z: 0.0
+              orientation:
+                roll: 0.0
+                pitch: 0.0
+                yaw: 1.57
+              velocity:
+                linear: 0.3
+                angular: 0.0
+              last_updated: "2025-12-25T10:30:00Z"
+      '404':
+        $ref: '../responses/errors.yaml#/NotFound'
+
+robot-telemetry:
+  get:
+    tags:
+      - Robot
+    summary: Get robot telemetry
+    description: Get telemetry data stream for a robot
+    operationId: getRobotTelemetry
+    parameters:
+      - $ref: '../parameters/common.yaml#/RobotId'
+      - name: start_time
+        in: query
+        description: Start time for telemetry range (ISO 8601)
+        schema:
+          type: string
+          format: date-time
+      - name: end_time
+        in: query
+        description: End time for telemetry range (ISO 8601)
+        schema:
+          type: string
+          format: date-time
+      - name: metrics
+        in: query
+        description: Comma-separated list of metrics to include
+        schema:
+          type: string
+          example: "position,velocity,battery,temperature"
+    responses:
+      '200':
+        description: Telemetry data
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/robot.yaml#/TelemetryData'

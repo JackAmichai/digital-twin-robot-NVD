@@ -1,0 +1,255 @@
+# Fleet Schemas
+
+FleetStatus:
+  type: object
+  required:
+    - total_robots
+  properties:
+    total_robots:
+      type: integer
+      description: Total number of registered robots
+    online:
+      type: integer
+      description: Number of online robots
+    offline:
+      type: integer
+    busy:
+      type: integer
+    idle:
+      type: integer
+    error:
+      type: integer
+    maintenance:
+      type: integer
+    active_tasks:
+      type: integer
+      description: Number of tasks currently in progress
+    pending_tasks:
+      type: integer
+      description: Number of tasks waiting assignment
+    completed_today:
+      type: integer
+      description: Tasks completed in last 24 hours
+    efficiency_score:
+      type: number
+      minimum: 0
+      maximum: 100
+      description: Fleet efficiency percentage
+
+Task:
+  type: object
+  required:
+    - id
+    - name
+    - type
+    - status
+  properties:
+    id:
+      type: string
+    name:
+      type: string
+    type:
+      type: string
+      enum:
+        - transport
+        - assembly
+        - inspection
+        - cleaning
+        - maintenance
+        - custom
+    status:
+      type: string
+      enum:
+        - pending
+        - assigned
+        - in_progress
+        - completed
+        - failed
+        - cancelled
+    priority:
+      type: string
+      enum:
+        - low
+        - normal
+        - high
+        - critical
+    assigned_robot:
+      type: string
+      description: Robot ID (if assigned)
+    created_at:
+      type: string
+      format: date-time
+    started_at:
+      type: string
+      format: date-time
+    completed_at:
+      type: string
+      format: date-time
+    progress:
+      type: integer
+      minimum: 0
+      maximum: 100
+      description: Task progress percentage
+
+TaskDetail:
+  allOf:
+    - $ref: '#/Task'
+    - type: object
+      properties:
+        description:
+          type: string
+        parameters:
+          type: object
+          additionalProperties: true
+        constraints:
+          type: object
+          properties:
+            deadline:
+              type: string
+              format: date-time
+            required_capabilities:
+              type: array
+              items:
+                type: string
+            preferred_robots:
+              type: array
+              items:
+                type: string
+            excluded_robots:
+              type: array
+              items:
+                type: string
+        execution_log:
+          type: array
+          items:
+            type: object
+            properties:
+              timestamp:
+                type: string
+                format: date-time
+              event:
+                type: string
+              details:
+                type: string
+        result:
+          type: object
+          properties:
+            success:
+              type: boolean
+            duration_ms:
+              type: integer
+            error_message:
+              type: string
+            output:
+              type: object
+              additionalProperties: true
+
+TaskCreate:
+  type: object
+  required:
+    - name
+    - type
+  properties:
+    name:
+      type: string
+    type:
+      type: string
+      enum:
+        - transport
+        - assembly
+        - inspection
+        - cleaning
+        - maintenance
+        - custom
+    description:
+      type: string
+    priority:
+      type: string
+      enum:
+        - low
+        - normal
+        - high
+        - critical
+      default: normal
+    parameters:
+      type: object
+      additionalProperties: true
+    constraints:
+      type: object
+      properties:
+        deadline:
+          type: string
+          format: date-time
+        required_capabilities:
+          type: array
+          items:
+            type: string
+        preferred_robots:
+          type: array
+          items:
+            type: string
+        excluded_robots:
+          type: array
+          items:
+            type: string
+    assign_to:
+      type: string
+      description: Specific robot ID to assign to
+
+TaskUpdate:
+  type: object
+  properties:
+    name:
+      type: string
+    priority:
+      type: string
+      enum:
+        - low
+        - normal
+        - high
+        - critical
+    parameters:
+      type: object
+      additionalProperties: true
+    constraints:
+      type: object
+      properties:
+        deadline:
+          type: string
+          format: date-time
+
+AllocationResult:
+  type: object
+  required:
+    - allocated_count
+    - unallocated_count
+  properties:
+    allocated_count:
+      type: integer
+      description: Number of tasks successfully allocated
+    unallocated_count:
+      type: integer
+      description: Number of tasks that could not be allocated
+    allocations:
+      type: array
+      items:
+        type: object
+        properties:
+          task_id:
+            type: string
+          robot_id:
+            type: string
+          estimated_start:
+            type: string
+            format: date-time
+          estimated_duration_ms:
+            type: integer
+    unallocated_reasons:
+      type: array
+      items:
+        type: object
+        properties:
+          task_id:
+            type: string
+          reason:
+            type: string

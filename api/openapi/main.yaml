@@ -1,0 +1,137 @@
+openapi: 3.1.0
+info:
+  title: Digital Twin Robotics Lab API
+  description: |
+    Comprehensive API for the Digital Twin Robotics Lab platform.
+    
+    This API provides endpoints for:
+    - **Voice Processing**: ASR, TTS, and natural language understanding
+    - **Robot Control**: Command execution and status monitoring
+    - **Fleet Management**: Multi-robot coordination and task allocation
+    - **Simulation**: Digital twin synchronization and scenario management
+    - **Cognitive Services**: Intent extraction and conversation management
+    
+    ## Authentication
+    All API endpoints require JWT Bearer token authentication unless otherwise specified.
+    
+    ## Rate Limiting
+    - Standard tier: 1000 requests/minute
+    - Premium tier: 10000 requests/minute
+    
+    ## Versioning
+    API versioning is handled via URL path (e.g., `/api/v1/...`)
+  version: 1.0.0
+  contact:
+    name: Digital Twin Robotics Lab Team
+    email: support@digital-twin-robotics.io
+    url: https://digital-twin-robotics.io
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server
+  - url: https://api.digital-twin-robotics.io/api/v1
+    description: Production server
+  - url: https://staging-api.digital-twin-robotics.io/api/v1
+    description: Staging server
+
+tags:
+  - name: Voice
+    description: Voice processing operations (ASR, TTS, wake word)
+  - name: Robot
+    description: Robot control and status operations
+  - name: Fleet
+    description: Fleet management and task allocation
+  - name: Simulation
+    description: Digital twin simulation operations
+  - name: Cognitive
+    description: Cognitive services and intent extraction
+  - name: Health
+    description: System health and monitoring endpoints
+
+security:
+  - BearerAuth: []
+
+paths:
+  # Health endpoints
+  /health:
+    $ref: './paths/health.yaml#/health'
+  /health/ready:
+    $ref: './paths/health.yaml#/ready'
+  /health/live:
+    $ref: './paths/health.yaml#/live'
+
+  # Voice endpoints
+  /voice/transcribe:
+    $ref: './paths/voice.yaml#/transcribe'
+  /voice/synthesize:
+    $ref: './paths/voice.yaml#/synthesize'
+  /voice/wake-word/detect:
+    $ref: './paths/voice.yaml#/wake-word-detect'
+  /voice/languages:
+    $ref: './paths/voice.yaml#/languages'
+
+  # Robot endpoints
+  /robots:
+    $ref: './paths/robot.yaml#/robots'
+  /robots/{robotId}:
+    $ref: './paths/robot.yaml#/robot-by-id'
+  /robots/{robotId}/command:
+    $ref: './paths/robot.yaml#/robot-command'
+  /robots/{robotId}/status:
+    $ref: './paths/robot.yaml#/robot-status'
+  /robots/{robotId}/telemetry:
+    $ref: './paths/robot.yaml#/robot-telemetry'
+
+  # Fleet endpoints
+  /fleet/status:
+    $ref: './paths/fleet.yaml#/fleet-status'
+  /fleet/tasks:
+    $ref: './paths/fleet.yaml#/fleet-tasks'
+  /fleet/tasks/{taskId}:
+    $ref: './paths/fleet.yaml#/task-by-id'
+  /fleet/allocate:
+    $ref: './paths/fleet.yaml#/allocate'
+
+  # Simulation endpoints
+  /simulation/status:
+    $ref: './paths/simulation.yaml#/simulation-status'
+  /simulation/sync:
+    $ref: './paths/simulation.yaml#/sync'
+  /simulation/scenarios:
+    $ref: './paths/simulation.yaml#/scenarios'
+  /simulation/scenarios/{scenarioId}:
+    $ref: './paths/simulation.yaml#/scenario-by-id'
+
+  # Cognitive endpoints
+  /cognitive/intent:
+    $ref: './paths/cognitive.yaml#/intent'
+  /cognitive/conversation:
+    $ref: './paths/cognitive.yaml#/conversation'
+  /cognitive/conversation/{sessionId}:
+    $ref: './paths/cognitive.yaml#/conversation-by-id'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from authentication service
+
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for service-to-service communication
+
+  schemas:
+    $ref: './schemas/_index.yaml'
+
+  responses:
+    $ref: './responses/_index.yaml'
+
+  parameters:
+    $ref: './parameters/_index.yaml'

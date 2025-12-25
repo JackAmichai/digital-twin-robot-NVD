@@ -1,0 +1,280 @@
+# Robot Schemas
+
+Robot:
+  type: object
+  required:
+    - id
+    - name
+    - type
+    - status
+  properties:
+    id:
+      type: string
+      description: Unique robot identifier
+    name:
+      type: string
+      description: Human-readable robot name
+    type:
+      type: string
+      description: Robot type
+      enum:
+        - industrial_arm
+        - mobile_robot
+        - collaborative_robot
+        - agv
+        - drone
+    status:
+      type: string
+      enum:
+        - online
+        - offline
+        - busy
+        - error
+        - maintenance
+    battery_level:
+      type: integer
+      minimum: 0
+      maximum: 100
+      description: Battery percentage
+    position:
+      $ref: './common.yaml#/Position'
+    capabilities:
+      type: array
+      items:
+        type: string
+    last_seen:
+      type: string
+      format: date-time
+
+RobotDetail:
+  allOf:
+    - $ref: '#/Robot'
+    - type: object
+      properties:
+        firmware_version:
+          type: string
+        hardware_info:
+          type: object
+          properties:
+            manufacturer:
+              type: string
+            model:
+              type: string
+            serial_number:
+              type: string
+        configuration:
+          type: object
+          additionalProperties: true
+        maintenance_schedule:
+          type: object
+          properties:
+            last_maintenance:
+              type: string
+              format: date-time
+            next_maintenance:
+              type: string
+              format: date-time
+        statistics:
+          type: object
+          properties:
+            total_tasks:
+              type: integer
+            successful_tasks:
+              type: integer
+            total_runtime_hours:
+              type: number
+            total_distance_km:
+              type: number
+
+RobotRegistration:
+  type: object
+  required:
+    - name
+    - type
+  properties:
+    id:
+      type: string
+      description: Optional custom ID (auto-generated if not provided)
+    name:
+      type: string
+    type:
+      type: string
+      enum:
+        - industrial_arm
+        - mobile_robot
+        - collaborative_robot
+        - agv
+        - drone
+    capabilities:
+      type: array
+      items:
+        type: string
+    initial_position:
+      $ref: './common.yaml#/Position'
+    configuration:
+      type: object
+      additionalProperties: true
+
+RobotUpdate:
+  type: object
+  properties:
+    name:
+      type: string
+    status:
+      type: string
+      enum:
+        - online
+        - offline
+        - maintenance
+    capabilities:
+      type: array
+      items:
+        type: string
+    configuration:
+      type: object
+      additionalProperties: true
+
+RobotCommand:
+  type: object
+  required:
+    - command_type
+  properties:
+    command_type:
+      type: string
+      description: Type of command
+      enum:
+        - navigate
+        - move
+        - rotate
+        - stop
+        - pick
+        - place
+        - grip
+        - release
+        - pause
+        - resume
+        - emergency_stop
+        - home
+        - calibrate
+    parameters:
+      type: object
+      additionalProperties: true
+      description: Command-specific parameters
+    priority:
+      type: string
+      enum:
+        - low
+        - normal
+        - high
+        - critical
+      default: normal
+    timeout_ms:
+      type: integer
+      description: Command timeout in milliseconds
+
+CommandResponse:
+  type: object
+  required:
+    - command_id
+    - status
+  properties:
+    command_id:
+      type: string
+    status:
+      type: string
+      enum:
+        - accepted
+        - queued
+        - rejected
+    estimated_duration_ms:
+      type: integer
+    rejection_reason:
+      type: string
+
+RobotStatus:
+  type: object
+  required:
+    - robot_id
+    - status
+  properties:
+    robot_id:
+      type: string
+    status:
+      type: string
+      enum:
+        - online
+        - offline
+        - busy
+        - error
+        - maintenance
+    current_task:
+      type: string
+      description: Current task ID (if any)
+    battery_level:
+      type: integer
+      minimum: 0
+      maximum: 100
+    position:
+      $ref: './common.yaml#/Position'
+    orientation:
+      $ref: './common.yaml#/Orientation'
+    velocity:
+      type: object
+      properties:
+        linear:
+          type: number
+          description: Linear velocity (m/s)
+        angular:
+          type: number
+          description: Angular velocity (rad/s)
+    error_code:
+      type: string
+    error_message:
+      type: string
+    last_updated:
+      type: string
+      format: date-time
+
+TelemetryData:
+  type: object
+  required:
+    - robot_id
+    - data_points
+  properties:
+    robot_id:
+      type: string
+    start_time:
+      type: string
+      format: date-time
+    end_time:
+      type: string
+      format: date-time
+    data_points:
+      type: array
+      items:
+        type: object
+        properties:
+          timestamp:
+            type: string
+            format: date-time
+          position:
+            $ref: './common.yaml#/Position'
+          velocity:
+            type: object
+            properties:
+              linear:
+                type: number
+              angular:
+                type: number
+          battery_level:
+            type: integer
+          temperature:
+            type: number
+          cpu_usage:
+            type: number
+          memory_usage:
+            type: number
+          custom_metrics:
+            type: object
+            additionalProperties:
+              type: number

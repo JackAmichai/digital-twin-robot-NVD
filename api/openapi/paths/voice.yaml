@@ -1,0 +1,252 @@
+# Voice Processing Endpoints
+
+transcribe:
+  post:
+    tags:
+      - Voice
+    summary: Transcribe audio to text
+    description: |
+      Convert audio input to text using NVIDIA Riva ASR.
+      
+      Supports multiple languages and audio formats.
+      Real-time streaming is available via WebSocket endpoint.
+    operationId: transcribeAudio
+    requestBody:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            type: object
+            required:
+              - audio
+            properties:
+              audio:
+                type: string
+                format: binary
+                description: Audio file (WAV, MP3, FLAC, OGG)
+              language:
+                type: string
+                default: en-US
+                description: Language code for transcription
+                enum:
+                  - en-US
+                  - en-GB
+                  - de-DE
+                  - fr-FR
+                  - es-ES
+                  - it-IT
+                  - ja-JP
+                  - ko-KR
+                  - zh-CN
+                  - pt-BR
+              sample_rate:
+                type: integer
+                default: 16000
+                description: Audio sample rate in Hz
+              enable_punctuation:
+                type: boolean
+                default: true
+                description: Enable automatic punctuation
+              enable_word_timestamps:
+                type: boolean
+                default: false
+                description: Include word-level timestamps
+        application/json:
+          schema:
+            type: object
+            required:
+              - audio_base64
+            properties:
+              audio_base64:
+                type: string
+                format: byte
+                description: Base64 encoded audio data
+              language:
+                type: string
+                default: en-US
+              sample_rate:
+                type: integer
+                default: 16000
+    responses:
+      '200':
+        description: Transcription successful
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/voice.yaml#/TranscriptionResult'
+            example:
+              text: "Navigate to the assembly station"
+              confidence: 0.95
+              language: en-US
+              duration_ms: 2340
+              words:
+                - word: "Navigate"
+                  start_ms: 100
+                  end_ms: 450
+                  confidence: 0.98
+                - word: "to"
+                  start_ms: 460
+                  end_ms: 520
+                  confidence: 0.99
+      '400':
+        $ref: '../responses/errors.yaml#/BadRequest'
+      '413':
+        description: Audio file too large (max 25MB)
+      '415':
+        description: Unsupported audio format
+      '429':
+        $ref: '../responses/errors.yaml#/TooManyRequests'
+
+synthesize:
+  post:
+    tags:
+      - Voice
+    summary: Synthesize text to speech
+    description: |
+      Convert text to natural speech using NVIDIA Riva TTS.
+      
+      Supports multiple voices, languages, and emotional expressions.
+    operationId: synthesizeSpeech
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - text
+            properties:
+              text:
+                type: string
+                maxLength: 5000
+                description: Text to synthesize
+                example: "Task completed successfully. Moving to next waypoint."
+              voice:
+                type: string
+                default: default
+                description: Voice ID to use
+              language:
+                type: string
+                default: en-US
+                description: Language code
+              emotion:
+                type: string
+                enum:
+                  - neutral
+                  - happy
+                  - sad
+                  - urgent
+                  - calm
+                default: neutral
+                description: Emotional tone for speech
+              speaking_rate:
+                type: number
+                minimum: 0.5
+                maximum: 2.0
+                default: 1.0
+                description: Speech rate multiplier
+              pitch:
+                type: number
+                minimum: -20.0
+                maximum: 20.0
+                default: 0.0
+                description: Pitch adjustment in semitones
+              output_format:
+                type: string
+                enum:
+                  - wav
+                  - mp3
+                  - ogg
+                default: wav
+    responses:
+      '200':
+        description: Speech synthesis successful
+        content:
+          audio/wav:
+            schema:
+              type: string
+              format: binary
+          audio/mpeg:
+            schema:
+              type: string
+              format: binary
+          application/json:
+            schema:
+              type: object
+              properties:
+                audio_base64:
+                  type: string
+                  format: byte
+                duration_ms:
+                  type: integer
+                sample_rate:
+                  type: integer
+      '400':
+        $ref: '../responses/errors.yaml#/BadRequest'
+      '429':
+        $ref: '../responses/errors.yaml#/TooManyRequests'
+
+wake-word-detect:
+  post:
+    tags:
+      - Voice
+    summary: Detect wake word in audio
+    description: |
+      Detect configured wake words in audio stream.
+      
+      Default wake words: "Hey Robot", "OK Robot"
+    operationId: detectWakeWord
+    requestBody:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            type: object
+            required:
+              - audio
+            properties:
+              audio:
+                type: string
+                format: binary
+              sensitivity:
+                type: number
+                minimum: 0.0
+                maximum: 1.0
+                default: 0.5
+                description: Detection sensitivity (higher = more sensitive)
+    responses:
+      '200':
+        description: Wake word detection result
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/voice.yaml#/WakeWordResult'
+            example:
+              detected: true
+              wake_word: "Hey Robot"
+              confidence: 0.92
+              timestamp_ms: 1250
+
+languages:
+  get:
+    tags:
+      - Voice
+    summary: List supported languages
+    description: Get list of supported languages for ASR and TTS
+    operationId: getSupportedLanguages
+    responses:
+      '200':
+        description: List of supported languages
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                asr_languages:
+                  type: array
+                  items:
+                    $ref: '../schemas/voice.yaml#/Language'
+                tts_languages:
+                  type: array
+                  items:
+                    $ref: '../schemas/voice.yaml#/Language'

@@ -1,0 +1,209 @@
+# Cognitive Services Endpoints
+
+intent:
+  post:
+    tags:
+      - Cognitive
+    summary: Extract intent from text
+    description: |
+      Extract user intent and entities from natural language text.
+      
+      Uses NVIDIA NIM with Llama 3.1 8B for understanding.
+    operationId: extractIntent
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - text
+            properties:
+              text:
+                type: string
+                maxLength: 2000
+                description: Natural language input text
+                example: "Move the blue robot to station 3 and pick up the package"
+              context:
+                type: object
+                additionalProperties: true
+                description: Additional context for intent extraction
+              session_id:
+                type: string
+                description: Session ID for conversation context
+              language:
+                type: string
+                default: en
+                description: Language of the input text
+    responses:
+      '200':
+        description: Intent extraction result
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/cognitive.yaml#/IntentResult'
+            example:
+              intent: "robot_command"
+              confidence: 0.94
+              sub_intents:
+                - intent: "navigate"
+                  confidence: 0.96
+                - intent: "pick"
+                  confidence: 0.91
+              entities:
+                - type: "robot"
+                  value: "blue robot"
+                  normalized: "robot-002"
+                  confidence: 0.88
+                - type: "location"
+                  value: "station 3"
+                  normalized: "station-003"
+                  confidence: 0.95
+                - type: "object"
+                  value: "package"
+                  confidence: 0.82
+              suggested_actions:
+                - action: "navigate"
+                  robot_id: "robot-002"
+                  parameters:
+                    destination: "station-003"
+                - action: "pick"
+                  robot_id: "robot-002"
+                  parameters:
+                    object_type: "package"
+      '400':
+        $ref: '../responses/errors.yaml#/BadRequest'
+      '429':
+        $ref: '../responses/errors.yaml#/TooManyRequests'
+
+conversation:
+  post:
+    tags:
+      - Cognitive
+    summary: Start conversation session
+    description: Start a new conversation session for multi-turn interactions
+    operationId: startConversation
+    requestBody:
+      required: false
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              user_id:
+                type: string
+                description: User identifier for personalization
+              context:
+                type: object
+                additionalProperties: true
+                description: Initial context
+              settings:
+                type: object
+                properties:
+                  language:
+                    type: string
+                    default: en
+                  max_turns:
+                    type: integer
+                    default: 50
+                  timeout_minutes:
+                    type: integer
+                    default: 30
+    responses:
+      '201':
+        description: Conversation session created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                session_id:
+                  type: string
+                expires_at:
+                  type: string
+                  format: date-time
+            example:
+              session_id: "conv-abc123xyz"
+              expires_at: "2025-12-25T11:00:00Z"
+
+conversation-by-id:
+  get:
+    tags:
+      - Cognitive
+    summary: Get conversation history
+    description: Get history of a conversation session
+    operationId: getConversation
+    parameters:
+      - $ref: '../parameters/common.yaml#/SessionId'
+    responses:
+      '200':
+        description: Conversation history
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/cognitive.yaml#/Conversation'
+      '404':
+        $ref: '../responses/errors.yaml#/NotFound'
+
+  post:
+    tags:
+      - Cognitive
+    summary: Send message to conversation
+    description: Send a message in an existing conversation and get a response
+    operationId: sendMessage
+    parameters:
+      - $ref: '../parameters/common.yaml#/SessionId'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - message
+            properties:
+              message:
+                type: string
+                maxLength: 2000
+                description: User message
+              execute_actions:
+                type: boolean
+                default: false
+                description: Automatically execute suggested actions
+    responses:
+      '200':
+        description: Conversation response
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/cognitive.yaml#/ConversationResponse'
+            example:
+              response: "I'll move robot-002 to station 3 and have it pick up the package. Should I proceed?"
+              intent:
+                intent: "robot_command"
+                confidence: 0.94
+              suggested_actions:
+                - action: "navigate"
+                  robot_id: "robot-002"
+                  parameters:
+                    destination: "station-003"
+              requires_confirmation: true
+              turn_number: 3
+      '404':
+        $ref: '../responses/errors.yaml#/NotFound'
+      '410':
+        description: Conversation session expired
+
+  delete:
+    tags:
+      - Cognitive
+    summary: End conversation
+    description: End a conversation session and clean up resources
+    operationId: endConversation
+    parameters:
+      - $ref: '../parameters/common.yaml#/SessionId'
+    responses:
+      '204':
+        description: Conversation ended
+      '404':
+        $ref: '../responses/errors.yaml#/NotFound'

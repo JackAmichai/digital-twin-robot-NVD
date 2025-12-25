@@ -1,0 +1,121 @@
+# Error Responses
+
+BadRequest:
+  description: Bad Request - Invalid input
+  content:
+    application/json:
+      schema:
+        $ref: '../schemas/common.yaml#/Error'
+      example:
+        code: "BAD_REQUEST"
+        message: "Invalid input parameters"
+        details:
+          field: "position.x"
+          error: "Must be a number"
+        request_id: "req-abc123"
+
+Unauthorized:
+  description: Unauthorized - Authentication required
+  content:
+    application/json:
+      schema:
+        $ref: '../schemas/common.yaml#/Error'
+      example:
+        code: "UNAUTHORIZED"
+        message: "Authentication required"
+        request_id: "req-abc123"
+
+Forbidden:
+  description: Forbidden - Insufficient permissions
+  content:
+    application/json:
+      schema:
+        $ref: '../schemas/common.yaml#/Error'
+      example:
+        code: "FORBIDDEN"
+        message: "Insufficient permissions to access this resource"
+        request_id: "req-abc123"
+
+NotFound:
+  description: Not Found - Resource does not exist
+  content:
+    application/json:
+      schema:
+        $ref: '../schemas/common.yaml#/Error'
+      example:
+        code: "NOT_FOUND"
+        message: "Resource not found"
+        details:
+          resource_type: "robot"
+          resource_id: "robot-999"
+        request_id: "req-abc123"
+
+Conflict:
+  description: Conflict - Resource state conflict
+  content:
+    application/json:
+      schema:
+        $ref: '../schemas/common.yaml#/Error'
+      example:
+        code: "CONFLICT"
+        message: "Resource already exists or is in conflicting state"
+        request_id: "req-abc123"
+
+TooManyRequests:
+  description: Too Many Requests - Rate limit exceeded
+  headers:
+    X-RateLimit-Limit:
+      description: Request limit per minute
+      schema:
+        type: integer
+    X-RateLimit-Remaining:
+      description: Remaining requests in current window
+      schema:
+        type: integer
+    X-RateLimit-Reset:
+      description: Time when rate limit resets (Unix timestamp)
+      schema:
+        type: integer
+    Retry-After:
+      description: Seconds to wait before retrying
+      schema:
+        type: integer
+  content:
+    application/json:
+      schema:
+        $ref: '../schemas/common.yaml#/Error'
+      example:
+        code: "RATE_LIMITED"
+        message: "Rate limit exceeded. Please retry after 60 seconds."
+        details:
+          limit: 1000
+          remaining: 0
+          reset_at: "2025-12-25T11:00:00Z"
+        request_id: "req-abc123"
+
+InternalError:
+  description: Internal Server Error
+  content:
+    application/json:
+      schema:
+        $ref: '../schemas/common.yaml#/Error'
+      example:
+        code: "INTERNAL_ERROR"
+        message: "An unexpected error occurred"
+        request_id: "req-abc123"
+
+ServiceUnavailable:
+  description: Service Unavailable - Service temporarily down
+  headers:
+    Retry-After:
+      description: Seconds to wait before retrying
+      schema:
+        type: integer
+  content:
+    application/json:
+      schema:
+        $ref: '../schemas/common.yaml#/Error'
+      example:
+        code: "SERVICE_UNAVAILABLE"
+        message: "Service is temporarily unavailable. Please try again later."
+        request_id: "req-abc123"

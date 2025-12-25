@@ -1,0 +1,26 @@
+# Parameters Index
+
+PageSize:
+  $ref: './common.yaml#/PageSize'
+PageToken:
+  $ref: './common.yaml#/PageToken'
+RobotId:
+  $ref: './common.yaml#/RobotId'
+TaskId:
+  $ref: './common.yaml#/TaskId'
+ScenarioId:
+  $ref: './common.yaml#/ScenarioId'
+SessionId:
+  $ref: './common.yaml#/SessionId'
+SortBy:
+  $ref: './common.yaml#/SortBy'
+SortOrder:
+  $ref: './common.yaml#/SortOrder'
+Filter:
+  $ref: './common.yaml#/Filter'
+IncludeDeleted:
+  $ref: './common.yaml#/IncludeDeleted'
+TimeRangeStart:
+  $ref: './common.yaml#/TimeRangeStart'
+TimeRangeEnd:
+  $ref: './common.yaml#/TimeRangeEnd'

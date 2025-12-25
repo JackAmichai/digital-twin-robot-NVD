@@ -1,0 +1,145 @@
+# Common Schemas
+
+Error:
+  type: object
+  required:
+    - code
+    - message
+  properties:
+    code:
+      type: string
+      description: Error code
+    message:
+      type: string
+      description: Human-readable error message
+    details:
+      type: object
+      additionalProperties: true
+      description: Additional error details
+    request_id:
+      type: string
+      description: Request ID for tracking
+    timestamp:
+      type: string
+      format: date-time
+
+Position:
+  type: object
+  description: 3D position coordinates
+  required:
+    - x
+    - y
+  properties:
+    x:
+      type: number
+      description: X coordinate (meters)
+    y:
+      type: number
+      description: Y coordinate (meters)
+    z:
+      type: number
+      description: Z coordinate (meters)
+      default: 0.0
+
+Orientation:
+  type: object
+  description: 3D orientation (Euler angles)
+  properties:
+    roll:
+      type: number
+      description: Roll angle (radians)
+    pitch:
+      type: number
+      description: Pitch angle (radians)
+    yaw:
+      type: number
+      description: Yaw angle (radians)
+
+Quaternion:
+  type: object
+  description: Orientation as quaternion
+  required:
+    - x
+    - y
+    - z
+    - w
+  properties:
+    x:
+      type: number
+    y:
+      type: number
+    z:
+      type: number
+    w:
+      type: number
+
+Pose:
+  type: object
+  description: Full pose (position + orientation)
+  properties:
+    position:
+      $ref: '#/Position'
+    orientation:
+      $ref: '#/Orientation'
+
+BoundingBox:
+  type: object
+  description: 3D bounding box
+  properties:
+    min:
+      $ref: '#/Position'
+    max:
+      $ref: '#/Position'
+    center:
+      $ref: '#/Position'
+    dimensions:
+      type: object
+      properties:
+        width:
+          type: number
+        height:
+          type: number
+        depth:
+          type: number
+
+Timestamp:
+  type: string
+  format: date-time
+  description: ISO 8601 timestamp
+
+PaginatedResponse:
+  type: object
+  properties:
+    items:
+      type: array
+      items: {}
+    next_page_token:
+      type: string
+      description: Token for next page (if more results exist)
+    total_count:
+      type: integer
+      description: Total number of items
+
+Metadata:
+  type: object
+  properties:
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+    created_by:
+      type: string
+    updated_by:
+      type: string
+    version:
+      type: integer
+    tags:
+      type: array
+      items:
+        type: string
+    labels:
+      type: object
+      additionalProperties:
+        type: string

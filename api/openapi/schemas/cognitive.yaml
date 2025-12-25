@@ -1,0 +1,170 @@
+# Cognitive Schemas
+
+IntentResult:
+  type: object
+  required:
+    - intent
+    - confidence
+  properties:
+    intent:
+      type: string
+      description: Primary detected intent
+    confidence:
+      type: number
+      minimum: 0
+      maximum: 1
+      description: Confidence score
+    sub_intents:
+      type: array
+      description: Secondary intents detected
+      items:
+        type: object
+        properties:
+          intent:
+            type: string
+          confidence:
+            type: number
+    entities:
+      type: array
+      description: Extracted entities
+      items:
+        type: object
+        properties:
+          type:
+            type: string
+            description: Entity type (robot, location, object, action, etc.)
+          value:
+            type: string
+            description: Raw value from text
+          normalized:
+            type: string
+            description: Normalized/resolved value
+          confidence:
+            type: number
+          start_index:
+            type: integer
+            description: Start position in original text
+          end_index:
+            type: integer
+            description: End position in original text
+    suggested_actions:
+      type: array
+      description: Actions suggested based on intent
+      items:
+        type: object
+        properties:
+          action:
+            type: string
+          robot_id:
+            type: string
+          parameters:
+            type: object
+            additionalProperties: true
+          confidence:
+            type: number
+    ambiguous:
+      type: boolean
+      description: Whether the intent is ambiguous
+    clarification_needed:
+      type: string
+      description: Question to ask user for clarification
+
+Conversation:
+  type: object
+  required:
+    - session_id
+    - turns
+  properties:
+    session_id:
+      type: string
+    user_id:
+      type: string
+    created_at:
+      type: string
+      format: date-time
+    expires_at:
+      type: string
+      format: date-time
+    turn_count:
+      type: integer
+    context:
+      type: object
+      additionalProperties: true
+      description: Accumulated conversation context
+    turns:
+      type: array
+      items:
+        type: object
+        properties:
+          turn_number:
+            type: integer
+          timestamp:
+            type: string
+            format: date-time
+          user_message:
+            type: string
+          assistant_response:
+            type: string
+          intent:
+            $ref: '#/IntentResult'
+          actions_executed:
+            type: array
+            items:
+              type: object
+              properties:
+                action:
+                  type: string
+                success:
+                  type: boolean
+                result:
+                  type: object
+                  additionalProperties: true
+
+ConversationResponse:
+  type: object
+  required:
+    - response
+  properties:
+    response:
+      type: string
+      description: Natural language response
+    intent:
+      $ref: '#/IntentResult'
+    suggested_actions:
+      type: array
+      items:
+        type: object
+        properties:
+          action:
+            type: string
+          robot_id:
+            type: string
+          parameters:
+            type: object
+            additionalProperties: true
+    executed_actions:
+      type: array
+      description: Actions that were executed (if execute_actions was true)
+      items:
+        type: object
+        properties:
+          action:
+            type: string
+          success:
+            type: boolean
+          result:
+            type: object
+            additionalProperties: true
+    requires_confirmation:
+      type: boolean
+      description: Whether user confirmation is needed before executing
+    follow_up_questions:
+      type: array
+      items:
+        type: string
+      description: Suggested follow-up questions
+    turn_number:
+      type: integer
+    context_updated:
+      type: boolean
+      description: Whether conversation context was updated

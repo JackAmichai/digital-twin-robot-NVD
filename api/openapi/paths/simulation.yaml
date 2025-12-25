@@ -1,0 +1,227 @@
+# Simulation Endpoints
+
+simulation-status:
+  get:
+    tags:
+      - Simulation
+    summary: Get simulation status
+    description: Get current status of the digital twin simulation
+    operationId: getSimulationStatus
+    responses:
+      '200':
+        description: Simulation status
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/simulation.yaml#/SimulationStatus'
+            example:
+              status: "running"
+              simulation_time: "2025-12-25T10:30:00Z"
+              real_time_factor: 1.0
+              physics_fps: 60
+              render_fps: 30
+              active_robots: 8
+              active_objects: 156
+              sync_status: "synchronized"
+              last_sync: "2025-12-25T10:29:58Z"
+              sync_latency_ms: 45
+
+sync:
+  post:
+    tags:
+      - Simulation
+    summary: Trigger synchronization
+    description: |
+      Trigger synchronization between physical robots and digital twins.
+      
+      Sync modes:
+      - **bidirectional**: Full two-way sync
+      - **to_simulation**: Push physical state to simulation
+      - **to_physical**: Push simulation state to physical (careful!)
+    operationId: triggerSync
+    requestBody:
+      required: false
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              mode:
+                type: string
+                enum:
+                  - bidirectional
+                  - to_simulation
+                  - to_physical
+                default: bidirectional
+              robot_ids:
+                type: array
+                items:
+                  type: string
+                description: Specific robots to sync (empty = all)
+              force:
+                type: boolean
+                default: false
+                description: Force sync even if discrepancies detected
+    responses:
+      '200':
+        description: Sync result
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/simulation.yaml#/SyncResult'
+            example:
+              status: "completed"
+              synced_robots: 8
+              sync_duration_ms: 250
+              discrepancies: []
+
+  get:
+    tags:
+      - Simulation
+    summary: Get sync status
+    description: Get current synchronization status and history
+    operationId: getSyncStatus
+    responses:
+      '200':
+        description: Sync status
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/simulation.yaml#/SyncStatus'
+
+scenarios:
+  get:
+    tags:
+      - Simulation
+    summary: List simulation scenarios
+    description: Get list of available simulation scenarios
+    operationId: listScenarios
+    parameters:
+      - name: category
+        in: query
+        description: Filter by scenario category
+        schema:
+          type: string
+          enum:
+            - training
+            - testing
+            - demo
+            - production
+      - $ref: '../parameters/common.yaml#/PageSize'
+      - $ref: '../parameters/common.yaml#/PageToken'
+    responses:
+      '200':
+        description: List of scenarios
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scenarios:
+                  type: array
+                  items:
+                    $ref: '../schemas/simulation.yaml#/Scenario'
+                next_page_token:
+                  type: string
+
+  post:
+    tags:
+      - Simulation
+    summary: Create scenario
+    description: Create a new simulation scenario
+    operationId: createScenario
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/simulation.yaml#/ScenarioCreate'
+    responses:
+      '201':
+        description: Scenario created
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/simulation.yaml#/Scenario'
+      '400':
+        $ref: '../responses/errors.yaml#/BadRequest'
+
+scenario-by-id:
+  get:
+    tags:
+      - Simulation
+    summary: Get scenario by ID
+    description: Get detailed information about a simulation scenario
+    operationId: getScenarioById
+    parameters:
+      - $ref: '../parameters/common.yaml#/ScenarioId'
+    responses:
+      '200':
+        description: Scenario details
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/simulation.yaml#/ScenarioDetail'
+      '404':
+        $ref: '../responses/errors.yaml#/NotFound'
+
+  post:
+    tags:
+      - Simulation
+    summary: Run scenario
+    description: Execute a simulation scenario
+    operationId: runScenario
+    parameters:
+      - $ref: '../parameters/common.yaml#/ScenarioId'
+    requestBody:
+      required: false
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              speed_multiplier:
+                type: number
+                minimum: 0.1
+                maximum: 10.0
+                default: 1.0
+              record:
+                type: boolean
+                default: false
+                description: Record scenario execution
+              parameters:
+                type: object
+                additionalProperties: true
+                description: Override scenario parameters
+    responses:
+      '202':
+        description: Scenario execution started
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                execution_id:
+                  type: string
+                status:
+                  type: string
+                estimated_duration_ms:
+                  type: integer
+      '404':
+        $ref: '../responses/errors.yaml#/NotFound'
+      '409':
+        description: Another scenario is already running
+
+  delete:
+    tags:
+      - Simulation
+    summary: Delete scenario
+    description: Delete a simulation scenario
+    operationId: deleteScenario
+    parameters:
+      - $ref: '../parameters/common.yaml#/ScenarioId'
+    responses:
+      '204':
+        description: Scenario deleted
+      '404':
+        $ref: '../responses/errors.yaml#/NotFound'

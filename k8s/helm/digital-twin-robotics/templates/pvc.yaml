@@ -1,0 +1,93 @@
+{{- if .Values.persistence.enabled }}
+# Model Repository PVC - Shared storage for AI models
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "digital-twin.fullname" . }}-models
+  labels:
+    {{- include "digital-twin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: storage
+spec:
+  accessModes:
+    - {{ .Values.persistence.models.accessMode }}
+  {{- if .Values.persistence.models.storageClass }}
+  storageClassName: {{ .Values.persistence.models.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.models.size }}
+---
+# Simulation Data PVC - Isaac Sim assets and scenes
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "digital-twin.fullname" . }}-simulation
+  labels:
+    {{- include "digital-twin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: storage
+spec:
+  accessModes:
+    - {{ .Values.persistence.simulation.accessMode }}
+  {{- if .Values.persistence.simulation.storageClass }}
+  storageClassName: {{ .Values.persistence.simulation.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.simulation.size }}
+---
+# Logs PVC - Persistent logging storage
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "digital-twin.fullname" . }}-logs
+  labels:
+    {{- include "digital-twin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: storage
+spec:
+  accessModes:
+    - {{ .Values.persistence.logs.accessMode }}
+  {{- if .Values.persistence.logs.storageClass }}
+  storageClassName: {{ .Values.persistence.logs.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.logs.size }}
+---
+# ROS 2 Workspace PVC - Robot configurations and maps
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "digital-twin.fullname" . }}-ros2-workspace
+  labels:
+    {{- include "digital-twin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: storage
+spec:
+  accessModes:
+    - {{ .Values.persistence.ros2Workspace.accessMode }}
+  {{- if .Values.persistence.ros2Workspace.storageClass }}
+  storageClassName: {{ .Values.persistence.ros2Workspace.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.ros2Workspace.size }}
+---
+# Metrics Data PVC - Prometheus/Grafana data
+{{- if .Values.persistence.metrics.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "digital-twin.fullname" . }}-metrics
+  labels:
+    {{- include "digital-twin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: storage
+spec:
+  accessModes:
+    - {{ .Values.persistence.metrics.accessMode }}
+  {{- if .Values.persistence.metrics.storageClass }}
+  storageClassName: {{ .Values.persistence.metrics.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.metrics.size }}
+{{- end }}
+{{- end }}

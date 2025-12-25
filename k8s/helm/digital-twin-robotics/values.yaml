@@ -1,0 +1,539 @@
+# =============================================================================
+# Digital Twin Robotics Lab - Helm Values
+# =============================================================================
+# Configure deployment settings for all components
+# Override these values with your own values.yaml or --set flags
+
+# -----------------------------------------------------------------------------
+# Global Settings
+# -----------------------------------------------------------------------------
+global:
+  # Image pull secrets for private registries
+  imagePullSecrets: []
+  # - name: nvcr-secret
+  
+  # Storage class for persistent volumes
+  storageClass: "gp3"
+  
+  # Namespace for all resources
+  namespace: "digital-twin"
+  
+  # Environment: development, staging, production
+  environment: "development"
+  
+  # GPU settings
+  gpu:
+    enabled: true
+    type: "nvidia"  # nvidia, amd
+    count: 1
+
+# -----------------------------------------------------------------------------
+# Cognitive Service (ASR, TTS, NLP)
+# -----------------------------------------------------------------------------
+cognitive:
+  enabled: true
+  
+  replicaCount: 2
+  
+  image:
+    repository: digital-twin/cognitive-service
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  
+  # Resource requests and limits
+  resources:
+    requests:
+      memory: "4Gi"
+      cpu: "2"
+      nvidia.com/gpu: "1"
+    limits:
+      memory: "8Gi"
+      cpu: "4"
+      nvidia.com/gpu: "1"
+  
+  # Horizontal Pod Autoscaler
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilization: 70
+    targetMemoryUtilization: 80
+    # Custom metrics for scaling
+    customMetrics:
+      - type: Pods
+        pods:
+          metric:
+            name: asr_requests_per_second
+          target:
+            type: AverageValue
+            averageValue: "100"
+  
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 8080
+    grpcPort: 50051
+  
+  # Health checks
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 8080
+    initialDelaySeconds: 30
+    periodSeconds: 10
+  
+  readinessProbe:
+    httpGet:
+      path: /ready
+      port: 8080
+    initialDelaySeconds: 10
+    periodSeconds: 5
+  
+  # Environment variables
+  env:
+    RIVA_URI: "riva-server:50051"
+    NIM_URI: "nim-llm:8000"
+    REDIS_HOST: "redis-master"
+    LOG_LEVEL: "INFO"
+
+# -----------------------------------------------------------------------------
+# NVIDIA Riva ASR/TTS Server
+# -----------------------------------------------------------------------------
+riva:
+  enabled: true
+  
+  replicaCount: 1
+  
+  image:
+    repository: nvcr.io/nvidia/riva/riva-speech
+    tag: "2.14.0-server"
+    pullPolicy: IfNotPresent
+  
+  resources:
+    requests:
+      memory: "16Gi"
+      cpu: "4"
+      nvidia.com/gpu: "1"
+    limits:
+      memory: "32Gi"
+      cpu: "8"
+      nvidia.com/gpu: "1"
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilization: 60
+    targetGPUUtilization: 70
+  
+  service:
+    type: ClusterIP
+    port: 50051
+  
+  # Riva model configuration
+  models:
+    asr:
+      - en-US
+      - es-ES
+      - de-DE
+    tts:
+      - en-US
+    nlp:
+      - punctuation
+      - intent_slot
+  
+  # Persistence for model cache
+  persistence:
+    enabled: true
+    size: 50Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+
+# -----------------------------------------------------------------------------
+# NVIDIA NIM LLM Service
+# -----------------------------------------------------------------------------
+nim:
+  enabled: true
+  
+  replicaCount: 1
+  
+  image:
+    repository: nvcr.io/nim/meta/llama-3.1-8b-instruct
+    tag: "1.2.0"
+    pullPolicy: IfNotPresent
+  
+  resources:
+    requests:
+      memory: "24Gi"
+      cpu: "4"
+      nvidia.com/gpu: "1"
+    limits:
+      memory: "48Gi"
+      cpu: "8"
+      nvidia.com/gpu: "1"
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilization: 70
+    # Scale based on inference queue length
+    customMetrics:
+      - type: Pods
+        pods:
+          metric:
+            name: nim_queue_length
+          target:
+            type: AverageValue
+            averageValue: "10"
+  
+  service:
+    type: ClusterIP
+    port: 8000
+  
+  env:
+    NGC_API_KEY:
+      valueFrom:
+        secretKeyRef:
+          name: nvidia-credentials
+          key: ngc-api-key
+
+# -----------------------------------------------------------------------------
+# ROS 2 Navigation Stack
+# -----------------------------------------------------------------------------
+ros2:
+  enabled: true
+  
+  replicaCount: 1
+  
+  image:
+    repository: digital-twin/ros2-nav
+    tag: "humble"
+    pullPolicy: IfNotPresent
+  
+  resources:
+    requests:
+      memory: "4Gi"
+      cpu: "2"
+    limits:
+      memory: "8Gi"
+      cpu: "4"
+  
+  service:
+    type: ClusterIP
+    ports:
+      - name: ros-master
+        port: 11311
+      - name: fastdds
+        port: 7400
+  
+  env:
+    ROS_DOMAIN_ID: "42"
+    RMW_IMPLEMENTATION: "rmw_fastrtps_cpp"
+  
+  # DDS discovery configuration
+  dds:
+    enabled: true
+    discoveryServer: true
+
+# -----------------------------------------------------------------------------
+# Isaac Sim (Simulation)
+# -----------------------------------------------------------------------------
+isaacSim:
+  enabled: true
+  
+  replicaCount: 1
+  
+  image:
+    repository: nvcr.io/nvidia/isaac-sim
+    tag: "4.2.0"
+    pullPolicy: IfNotPresent
+  
+  resources:
+    requests:
+      memory: "32Gi"
+      cpu: "8"
+      nvidia.com/gpu: "1"
+    limits:
+      memory: "64Gi"
+      cpu: "16"
+      nvidia.com/gpu: "1"
+  
+  # No autoscaling for simulation - single instance
+  autoscaling:
+    enabled: false
+  
+  service:
+    type: ClusterIP
+    ports:
+      - name: livestream
+        port: 8211
+      - name: websocket
+        port: 8899
+  
+  # Headless mode for server deployment
+  env:
+    ACCEPT_EULA: "Y"
+    PRIVACY_CONSENT: "Y"
+    HEADLESS: "true"
+  
+  persistence:
+    enabled: true
+    size: 100Gi
+    storageClass: ""
+
+# -----------------------------------------------------------------------------
+# Triton Inference Server
+# -----------------------------------------------------------------------------
+triton:
+  enabled: true
+  
+  replicaCount: 2
+  
+  image:
+    repository: nvcr.io/nvidia/tritonserver
+    tag: "24.01-py3"
+    pullPolicy: IfNotPresent
+  
+  resources:
+    requests:
+      memory: "8Gi"
+      cpu: "4"
+      nvidia.com/gpu: "1"
+    limits:
+      memory: "16Gi"
+      cpu: "8"
+      nvidia.com/gpu: "1"
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPUUtilization: 70
+    customMetrics:
+      - type: Pods
+        pods:
+          metric:
+            name: triton_inference_count
+          target:
+            type: AverageValue
+            averageValue: "1000"
+  
+  service:
+    type: ClusterIP
+    ports:
+      - name: http
+        port: 8000
+      - name: grpc
+        port: 8001
+      - name: metrics
+        port: 8002
+  
+  # Model repository
+  modelRepository:
+    enabled: true
+    source: "s3"  # s3, gcs, azure, local
+    path: "s3://models-bucket/triton-models"
+    pollInterval: 30
+
+# -----------------------------------------------------------------------------
+# Redis Cache
+# -----------------------------------------------------------------------------
+redis:
+  enabled: true
+  
+  architecture: replication
+  
+  auth:
+    enabled: true
+    password: ""  # Set via secret
+  
+  master:
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+      limits:
+        memory: "2Gi"
+        cpu: "1"
+    persistence:
+      enabled: true
+      size: 10Gi
+  
+  replica:
+    replicaCount: 2
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+      limits:
+        memory: "2Gi"
+        cpu: "1"
+
+# -----------------------------------------------------------------------------
+# Monitoring - Prometheus
+# -----------------------------------------------------------------------------
+prometheus:
+  enabled: true
+  
+  server:
+    resources:
+      requests:
+        memory: "2Gi"
+        cpu: "1"
+      limits:
+        memory: "4Gi"
+        cpu: "2"
+    
+    retention: "15d"
+    
+    persistentVolume:
+      enabled: true
+      size: 50Gi
+  
+  alertmanager:
+    enabled: true
+  
+  # Scrape configs for our services
+  serverFiles:
+    prometheus.yml:
+      scrape_configs:
+        - job_name: 'cognitive-service'
+          kubernetes_sd_configs:
+            - role: pod
+          relabel_configs:
+            - source_labels: [__meta_kubernetes_pod_label_app]
+              regex: cognitive-service
+              action: keep
+
+# -----------------------------------------------------------------------------
+# Monitoring - Grafana
+# -----------------------------------------------------------------------------
+grafana:
+  enabled: true
+  
+  adminUser: admin
+  adminPassword: ""  # Set via secret
+  
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+  
+  persistence:
+    enabled: true
+    size: 10Gi
+  
+  # Pre-provisioned dashboards
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: 'digital-twin'
+          folder: 'Digital Twin'
+          type: file
+          options:
+            path: /var/lib/grafana/dashboards/digital-twin
+
+# -----------------------------------------------------------------------------
+# Ingress Configuration
+# -----------------------------------------------------------------------------
+ingress:
+  enabled: true
+  
+  className: "nginx"
+  
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  
+  hosts:
+    - host: digital-twin.example.com
+      paths:
+        - path: /api
+          pathType: Prefix
+          service: cognitive
+          port: 8080
+        - path: /ws
+          pathType: Prefix
+          service: cognitive
+          port: 8080
+        - path: /grafana
+          pathType: Prefix
+          service: grafana
+          port: 80
+  
+  tls:
+    - secretName: digital-twin-tls
+      hosts:
+        - digital-twin.example.com
+
+# -----------------------------------------------------------------------------
+# Network Policies
+# -----------------------------------------------------------------------------
+networkPolicies:
+  enabled: true
+  
+  # Allow traffic only from specific namespaces
+  allowedNamespaces:
+    - digital-twin
+    - monitoring
+    - ingress-nginx
+
+# -----------------------------------------------------------------------------
+# Pod Disruption Budgets
+# -----------------------------------------------------------------------------
+podDisruptionBudget:
+  enabled: true
+  
+  cognitive:
+    minAvailable: 1
+  
+  riva:
+    minAvailable: 1
+  
+  triton:
+    minAvailable: 1
+
+# -----------------------------------------------------------------------------
+# Service Accounts
+# -----------------------------------------------------------------------------
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+  # For AWS IRSA:
+  # eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT:role/digital-twin-role
+
+# -----------------------------------------------------------------------------
+# Node Selectors and Tolerations
+# -----------------------------------------------------------------------------
+nodeSelector:
+  # Schedule GPU workloads on GPU nodes
+  gpu: {}
+    # nvidia.com/gpu.present: "true"
+  
+  # Schedule CPU workloads on CPU nodes
+  cpu: {}
+
+tolerations:
+  gpu:
+    - key: "nvidia.com/gpu"
+      operator: "Exists"
+      effect: "NoSchedule"
+
+affinity:
+  # Prefer spreading replicas across zones
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app: cognitive-service
+          topologyKey: topology.kubernetes.io/zone

@@ -1,0 +1,213 @@
+{{- if and .Values.cognitive.enabled .Values.cognitive.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "digital-twin.fullname" . }}-cognitive
+  labels:
+    {{- include "digital-twin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cognitive
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "digital-twin.fullname" . }}-cognitive
+  minReplicas: {{ .Values.cognitive.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.cognitive.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.cognitive.autoscaling.targetCPUUtilization }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.cognitive.autoscaling.targetMemoryUtilization }}
+    {{- if .Values.cognitive.autoscaling.customMetrics }}
+    {{- range .Values.cognitive.autoscaling.customMetrics }}
+    - type: {{ .type }}
+      {{- if eq .type "Pods" }}
+      pods:
+        metric:
+          name: {{ .pods.metric.name }}
+        target:
+          type: {{ .pods.target.type }}
+          averageValue: {{ .pods.target.averageValue }}
+      {{- end }}
+    {{- end }}
+    {{- end }}
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 10
+          periodSeconds: 60
+        - type: Pods
+          value: 1
+          periodSeconds: 60
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+        - type: Pods
+          value: 4
+          periodSeconds: 15
+      selectPolicy: Max
+{{- end }}
+---
+{{- if and .Values.riva.enabled .Values.riva.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "digital-twin.fullname" . }}-riva
+  labels:
+    {{- include "digital-twin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: riva
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "digital-twin.fullname" . }}-riva
+  minReplicas: {{ .Values.riva.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.riva.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.riva.autoscaling.targetCPUUtilization }}
+    {{- if .Values.riva.autoscaling.targetGPUUtilization }}
+    - type: Pods
+      pods:
+        metric:
+          name: DCGM_FI_DEV_GPU_UTIL
+        target:
+          type: AverageValue
+          averageValue: "{{ .Values.riva.autoscaling.targetGPUUtilization }}"
+    {{- end }}
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 600
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+{{- end }}
+---
+{{- if and .Values.nim.enabled .Values.nim.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "digital-twin.fullname" . }}-nim
+  labels:
+    {{- include "digital-twin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: nim
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "digital-twin.fullname" . }}-nim
+  minReplicas: {{ .Values.nim.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.nim.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.nim.autoscaling.targetCPUUtilization }}
+    {{- if .Values.nim.autoscaling.customMetrics }}
+    {{- range .Values.nim.autoscaling.customMetrics }}
+    - type: {{ .type }}
+      {{- if eq .type "Pods" }}
+      pods:
+        metric:
+          name: {{ .pods.metric.name }}
+        target:
+          type: {{ .pods.target.type }}
+          averageValue: {{ .pods.target.averageValue }}
+      {{- end }}
+    {{- end }}
+    {{- end }}
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 600
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 300
+    scaleUp:
+      stabilizationWindowSeconds: 120
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+{{- end }}
+---
+{{- if and .Values.triton.enabled .Values.triton.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "digital-twin.fullname" . }}-triton
+  labels:
+    {{- include "digital-twin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: triton
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "digital-twin.fullname" . }}-triton
+  minReplicas: {{ .Values.triton.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.triton.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.triton.autoscaling.targetCPUUtilization }}
+    {{- if .Values.triton.autoscaling.customMetrics }}
+    {{- range .Values.triton.autoscaling.customMetrics }}
+    - type: {{ .type }}
+      {{- if eq .type "Pods" }}
+      pods:
+        metric:
+          name: {{ .pods.metric.name }}
+        target:
+          type: {{ .pods.target.type }}
+          averageValue: {{ .pods.target.averageValue }}
+      {{- end }}
+    {{- end }}
+    {{- end }}
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 25
+          periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 30
+        - type: Pods
+          value: 4
+          periodSeconds: 30
+      selectPolicy: Max
+{{- end }}

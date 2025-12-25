@@ -1,0 +1,85 @@
+{{- if .Values.cognitive.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "digital-twin.fullname" . }}-cognitive
+  labels:
+    {{- include "digital-twin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cognitive
+spec:
+  type: {{ .Values.cognitive.service.type }}
+  ports:
+    - port: {{ .Values.cognitive.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    - port: {{ .Values.cognitive.service.grpcPort }}
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
+  selector:
+    {{- include "digital-twin.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: cognitive
+{{- end }}
+---
+{{- if .Values.riva.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "digital-twin.fullname" . }}-riva
+  labels:
+    {{- include "digital-twin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: riva
+spec:
+  type: {{ .Values.riva.service.type }}
+  ports:
+    - port: {{ .Values.riva.service.port }}
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
+  selector:
+    {{- include "digital-twin.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: riva
+{{- end }}
+---
+{{- if .Values.nim.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "digital-twin.fullname" . }}-nim
+  labels:
+    {{- include "digital-twin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: nim
+spec:
+  type: {{ .Values.nim.service.type }}
+  ports:
+    - port: {{ .Values.nim.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "digital-twin.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: nim
+{{- end }}
+---
+{{- if .Values.triton.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "digital-twin.fullname" . }}-triton
+  labels:
+    {{- include "digital-twin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: triton
+spec:
+  type: ClusterIP
+  ports:
+    {{- range .Values.triton.service.ports }}
+    - port: {{ .port }}
+      targetPort: {{ .name }}
+      protocol: TCP
+      name: {{ .name }}
+    {{- end }}
+  selector:
+    {{- include "digital-twin.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: triton
+{{- end }}

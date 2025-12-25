@@ -1,0 +1,323 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "digital-twin.fullname" . }}-cognitive-config
+  labels:
+    {{- include "digital-twin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cognitive
+data:
+  config.yaml: |
+    # Digital Twin Robotics Lab - Cognitive Service Configuration
+    
+    service:
+      name: cognitive-service
+      version: {{ .Chart.AppVersion }}
+      environment: {{ .Values.global.environment }}
+      
+    # Wake Word Detection
+    wake_word:
+      enabled: {{ .Values.cognitive.wakeWord.enabled }}
+      keywords:
+        {{- range .Values.cognitive.wakeWord.keywords }}
+        - {{ . | quote }}
+        {{- end }}
+      sensitivity: {{ .Values.cognitive.wakeWord.sensitivity }}
+      
+    # Multi-language ASR Configuration
+    asr:
+      default_language: {{ .Values.cognitive.asr.defaultLanguage }}
+      supported_languages:
+        {{- range .Values.cognitive.asr.supportedLanguages }}
+        - {{ . | quote }}
+        {{- end }}
+      auto_detect: {{ .Values.cognitive.asr.autoDetect }}
+      
+    # TTS Configuration
+    tts:
+      default_voice: {{ .Values.cognitive.tts.defaultVoice }}
+      speaking_rate: {{ .Values.cognitive.tts.speakingRate }}
+      pitch: {{ .Values.cognitive.tts.pitch }}
+      
+    # Noise Filtering
+    noise_filter:
+      enabled: {{ .Values.cognitive.noiseFilter.enabled }}
+      spectral_subtraction: {{ .Values.cognitive.noiseFilter.spectralSubtraction }}
+      vad_aggressiveness: {{ .Values.cognitive.noiseFilter.vadAggressiveness }}
+      
+    # Fleet Management
+    fleet:
+      max_robots: {{ .Values.cognitive.fleet.maxRobots }}
+      coordination_mode: {{ .Values.cognitive.fleet.coordinationMode }}
+      heartbeat_interval_ms: {{ .Values.cognitive.fleet.heartbeatIntervalMs }}
+      
+    # External Services
+    services:
+      riva:
+        host: {{ include "digital-twin.fullname" . }}-riva
+        port: 50051
+      nim:
+        host: {{ include "digital-twin.fullname" . }}-nim
+        port: 8000
+      triton:
+        host: {{ include "digital-twin.fullname" . }}-triton
+        port: 8000
+      redis:
+        host: {{ .Release.Name }}-redis-master
+        port: 6379
+        
+    # Logging
+    logging:
+      level: {{ .Values.cognitive.logging.level }}
+      format: {{ .Values.cognitive.logging.format }}
+      
+    # Metrics
+    metrics:
+      enabled: {{ .Values.cognitive.metrics.enabled }}
+      port: {{ .Values.cognitive.metrics.port }}
+      path: /metrics
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "digital-twin.fullname" . }}-riva-config
+  labels:
+    {{- include "digital-twin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: riva
+data:
+  riva_config.yaml: |
+    # NVIDIA Riva Configuration
+    
+    asr:
+      decoder_type: flashlight
+      max_batch_size: 8
+      model_repo: /models/asr
+      languages:
+        - en-US
+        - es-ES
+        - de-DE
+        - fr-FR
+        - ja-JP
+        - zh-CN
+        
+    tts:
+      model_repo: /models/tts
+      max_batch_size: 4
+      default_voice: English-US.Female-1
+      
+    nlp:
+      model_repo: /models/nlp
+      punctuation: true
+      
+    server:
+      grpc_port: 50051
+      http_port: 8000
+      max_concurrent_streams: 100
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "digital-twin.fullname" . }}-nim-config
+  labels:
+    {{- include "digital-twin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: nim
+data:
+  nim_config.yaml: |
+    # NVIDIA NIM LLM Configuration
+    
+    model:
+      name: meta/llama-3.1-8b-instruct
+      max_tokens: 2048
+      temperature: 0.7
+      
+    server:
+      host: 0.0.0.0
+      port: 8000
+      workers: 1
+      
+    inference:
+      batch_size: 1
+      max_concurrent_requests: 16
+      
+    optimization:
+      use_flash_attention: true
+      tensor_parallel_size: 1
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "digital-twin.fullname" . }}-triton-config
+  labels:
+    {{- include "digital-twin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: triton
+data:
+  triton_config.pbtxt: |
+    # Triton Inference Server Configuration
+    
+    model_control_mode: EXPLICIT
+    strict_model_config: false
+    
+    rate_limiter {
+      resources {
+        name: "GPU"
+        count: 1
+      }
+    }
+    
+    log_verbose_level: 1
+    
+  model_config.pbtxt: |
+    # Object Detection Model Configuration
+    name: "object_detection"
+    platform: "onnxruntime_onnx"
+    max_batch_size: 8
+    
+    input [
+      {
+        name: "images"
+        data_type: TYPE_FP32
+        dims: [3, 640, 640]
+      }
+    ]
+    
+    output [
+      {
+        name: "detections"
+        data_type: TYPE_FP32
+        dims: [-1, 7]
+      }
+    ]
+    
+    instance_group [
+      {
+        count: 1
+        kind: KIND_GPU
+        gpus: [0]
+      }
+    ]
+    
+    dynamic_batching {
+      max_queue_delay_microseconds: 100
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "digital-twin.fullname" . }}-ros2-config
+  labels:
+    {{- include "digital-twin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ros2
+data:
+  ros_params.yaml: |
+    # ROS 2 Parameters Configuration
+    
+    /**:
+      ros__parameters:
+        use_sim_time: true
+        
+    fleet_manager:
+      ros__parameters:
+        max_robots: 10
+        coordination_algorithm: "auction"
+        heartbeat_timeout_ms: 5000
+        task_queue_size: 100
+        
+    navigation:
+      ros__parameters:
+        robot_base_frame: base_link
+        global_frame: map
+        transform_tolerance: 0.5
+        controller_frequency: 20.0
+        planner_frequency: 1.0
+        
+    twin_sync:
+      ros__parameters:
+        sync_mode: "MIRROR"
+        sync_rate_hz: 60.0
+        latency_threshold_ms: 50.0
+        
+    predictive_maintenance:
+      ros__parameters:
+        wear_check_interval_s: 60.0
+        rul_prediction_horizon_hours: 100
+        alert_threshold_rul_hours: 24
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "digital-twin.fullname" . }}-prometheus-rules
+  labels:
+    {{- include "digital-twin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: monitoring
+data:
+  digital_twin_rules.yaml: |
+    groups:
+      - name: digital-twin-robotics
+        rules:
+          # High ASR latency alert
+          - alert: HighASRLatency
+            expr: histogram_quantile(0.99, rate(asr_processing_seconds_bucket[5m])) > 1.0
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High ASR processing latency"
+              description: "99th percentile ASR latency is above 1 second"
+              
+          # LLM inference errors
+          - alert: LLMInferenceErrors
+            expr: rate(llm_inference_errors_total[5m]) > 0.1
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "High LLM inference error rate"
+              description: "LLM inference error rate is above 10%"
+              
+          # Robot communication failure
+          - alert: RobotCommunicationFailure
+            expr: robot_heartbeat_failures_total > 3
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Robot communication failure"
+              description: "Robot {{ $labels.robot_id }} has missed heartbeats"
+              
+          # Twin sync lag
+          - alert: TwinSyncLag
+            expr: twin_sync_latency_ms > 100
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Digital twin sync lag"
+              description: "Twin sync latency exceeds 100ms threshold"
+              
+          # Predictive maintenance alert
+          - alert: ComponentNearEndOfLife
+            expr: component_remaining_useful_life_hours < 24
+            labels:
+              severity: warning
+            annotations:
+              summary: "Component approaching end of life"
+              description: "Component {{ $labels.component }} RUL below 24 hours"
+              
+          # GPU utilization
+          - alert: HighGPUUtilization
+            expr: nvidia_gpu_utilization > 90
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High GPU utilization"
+              description: "GPU utilization above 90% for 10 minutes"
+              
+          # Memory pressure
+          - alert: HighMemoryPressure
+            expr: container_memory_usage_bytes / container_spec_memory_limit_bytes > 0.9
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High memory pressure"
+              description: "Container memory usage above 90%"

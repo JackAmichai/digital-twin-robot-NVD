@@ -1,0 +1,130 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║         🤖 Digital Twin Robotics Lab - Helm Chart Deployment                 ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Thank you for installing {{ .Chart.Name }}!
+
+Your release is named: {{ .Release.Name }}
+Namespace: {{ .Release.Namespace }}
+
+════════════════════════════════════════════════════════════════════════════════
+                              📊 DEPLOYMENT STATUS
+════════════════════════════════════════════════════════════════════════════════
+
+To check the status of your deployment:
+
+  kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+
+To watch the deployment progress:
+
+  kubectl get pods -n {{ .Release.Namespace }} -w
+
+════════════════════════════════════════════════════════════════════════════════
+                              🔗 SERVICE ENDPOINTS
+════════════════════════════════════════════════════════════════════════════════
+
+{{- if .Values.cognitive.enabled }}
+COGNITIVE SERVICE:
+  Internal: {{ include "digital-twin.fullname" . }}-cognitive.{{ .Release.Namespace }}.svc.cluster.local:8080
+  {{- if .Values.ingress.enabled }}
+  External: https://{{ (index .Values.ingress.hosts 0).host }}/api/cognitive
+  {{- end }}
+{{- end }}
+
+{{- if .Values.riva.enabled }}
+NVIDIA RIVA (ASR/TTS):
+  gRPC: {{ include "digital-twin.fullname" . }}-riva.{{ .Release.Namespace }}.svc.cluster.local:50051
+  HTTP: {{ include "digital-twin.fullname" . }}-riva.{{ .Release.Namespace }}.svc.cluster.local:8000
+{{- end }}
+
+{{- if .Values.nim.enabled }}
+NVIDIA NIM (LLM):
+  API: {{ include "digital-twin.fullname" . }}-nim.{{ .Release.Namespace }}.svc.cluster.local:8000
+  {{- if .Values.ingress.enabled }}
+  External: https://{{ (index .Values.ingress.hosts 0).host }}/api/llm
+  {{- end }}
+{{- end }}
+
+{{- if .Values.triton.enabled }}
+TRITON INFERENCE SERVER:
+  HTTP: {{ include "digital-twin.fullname" . }}-triton.{{ .Release.Namespace }}.svc.cluster.local:8000
+  gRPC: {{ include "digital-twin.fullname" . }}-triton.{{ .Release.Namespace }}.svc.cluster.local:8001
+  Metrics: {{ include "digital-twin.fullname" . }}-triton.{{ .Release.Namespace }}.svc.cluster.local:8002
+{{- end }}
+
+════════════════════════════════════════════════════════════════════════════════
+                              🧪 TESTING THE DEPLOYMENT
+════════════════════════════════════════════════════════════════════════════════
+
+1. Test the Cognitive Service health:
+   kubectl exec -it $(kubectl get pod -n {{ .Release.Namespace }} -l app.kubernetes.io/component=cognitive -o jsonpath='{.items[0].metadata.name}') -n {{ .Release.Namespace }} -- curl http://localhost:8080/health
+
+2. Test Riva ASR connectivity:
+   kubectl exec -it $(kubectl get pod -n {{ .Release.Namespace }} -l app.kubernetes.io/component=riva -o jsonpath='{.items[0].metadata.name}') -n {{ .Release.Namespace }} -- riva_check_asr.py
+
+3. Test Triton model status:
+   kubectl exec -it $(kubectl get pod -n {{ .Release.Namespace }} -l app.kubernetes.io/component=triton -o jsonpath='{.items[0].metadata.name}') -n {{ .Release.Namespace }} -- curl http://localhost:8000/v2/health/ready
+
+════════════════════════════════════════════════════════════════════════════════
+                              📈 MONITORING
+════════════════════════════════════════════════════════════════════════════════
+
+{{- if .Values.prometheus.enabled }}
+Prometheus is enabled. Access metrics at:
+  kubectl port-forward svc/{{ .Release.Name }}-prometheus 9090:9090 -n {{ .Release.Namespace }}
+  Then open: http://localhost:9090
+{{- end }}
+
+{{- if .Values.grafana.enabled }}
+Grafana is enabled. Access dashboards at:
+  kubectl port-forward svc/{{ .Release.Name }}-grafana 3000:3000 -n {{ .Release.Namespace }}
+  Then open: http://localhost:3000
+  Default credentials: admin / {{ .Values.grafana.adminPassword | default "admin" }}
+{{- end }}
+
+════════════════════════════════════════════════════════════════════════════════
+                              🔧 USEFUL COMMANDS
+════════════════════════════════════════════════════════════════════════════════
+
+View logs:
+  kubectl logs -f -l app.kubernetes.io/instance={{ .Release.Name }} -n {{ .Release.Namespace }}
+
+Scale the cognitive service:
+  kubectl scale deployment {{ include "digital-twin.fullname" . }}-cognitive --replicas=3 -n {{ .Release.Namespace }}
+
+View HPA status:
+  kubectl get hpa -n {{ .Release.Namespace }}
+
+Upgrade the release:
+  helm upgrade {{ .Release.Name }} . -n {{ .Release.Namespace }} -f values.yaml
+
+Uninstall the release:
+  helm uninstall {{ .Release.Name }} -n {{ .Release.Namespace }}
+
+════════════════════════════════════════════════════════════════════════════════
+                              ⚠️  IMPORTANT NOTES
+════════════════════════════════════════════════════════════════════════════════
+
+1. GPU Requirements:
+   - NVIDIA Riva requires NVIDIA GPU with compute capability >= 7.0
+   - Isaac Sim requires RTX-capable GPU with >= 8GB VRAM
+   - Triton requires GPU for model inference
+
+2. NGC Authentication:
+   Ensure your NGC API key is configured in the secrets:
+   kubectl create secret generic ngc-credentials \
+     --from-literal=apikey=YOUR_NGC_API_KEY \
+     -n {{ .Release.Namespace }}
+
+3. Model Loading:
+   AI models may take several minutes to load on first startup.
+   Monitor pod logs for loading progress.
+
+4. Resource Tuning:
+   Adjust resource requests/limits in values.yaml based on your workload.
+
+════════════════════════════════════════════════════════════════════════════════
+
+For more information, visit: https://github.com/JackAmichai/digital-twin-robot-NVD
+
+Happy Robotics! 🚀

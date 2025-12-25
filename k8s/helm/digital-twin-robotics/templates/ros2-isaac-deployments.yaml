@@ -1,0 +1,239 @@
+{{- if .Values.ros2.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "digital-twin.fullname" . }}-ros2
+  labels:
+    {{- include "digital-twin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ros2
+spec:
+  replicas: {{ .Values.ros2.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "digital-twin.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: ros2
+  template:
+    metadata:
+      labels:
+        {{- include "digital-twin.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: ros2
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmaps.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "digital-twin.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.ros2.podSecurityContext | nindent 8 }}
+      containers:
+        - name: ros2-nav2
+          securityContext:
+            {{- toYaml .Values.ros2.securityContext | nindent 12 }}
+          image: "{{ .Values.ros2.image.repository }}:{{ .Values.ros2.image.tag }}"
+          imagePullPolicy: {{ .Values.ros2.image.pullPolicy }}
+          ports:
+            - name: dds
+              containerPort: 7400
+              protocol: UDP
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+          env:
+            - name: ROS_DOMAIN_ID
+              value: {{ .Values.ros2.domainId | quote }}
+            - name: RMW_IMPLEMENTATION
+              value: {{ .Values.ros2.rmwImplementation }}
+            - name: CYCLONEDDS_URI
+              value: /etc/ros2/cyclonedds.xml
+            - name: ROS_LOG_DIR
+              value: /var/log/ros2
+          volumeMounts:
+            - name: ros2-config
+              mountPath: /etc/ros2
+            - name: ros2-workspace
+              mountPath: /ros2_ws
+            - name: ros2-logs
+              mountPath: /var/log/ros2
+          resources:
+            {{- toYaml .Values.ros2.resources | nindent 12 }}
+          livenessProbe:
+            exec:
+              command:
+                - /bin/bash
+                - -c
+                - "ros2 topic list > /dev/null 2>&1"
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - /bin/bash
+                - -c
+                - "ros2 node list | grep -q fleet_manager"
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+      volumes:
+        - name: ros2-config
+          configMap:
+            name: {{ include "digital-twin.fullname" . }}-ros2-config
+        - name: ros2-workspace
+          persistentVolumeClaim:
+            claimName: {{ include "digital-twin.fullname" . }}-ros2-workspace
+        - name: ros2-logs
+          persistentVolumeClaim:
+            claimName: {{ include "digital-twin.fullname" . }}-logs
+      {{- with .Values.ros2.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.ros2.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+# ROS 2 DDS Discovery Service (for multi-node communication)
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "digital-twin.fullname" . }}-ros2-dds
+  labels:
+    {{- include "digital-twin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ros2
+spec:
+  type: ClusterIP
+  clusterIP: None  # Headless service for DDS discovery
+  selector:
+    {{- include "digital-twin.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: ros2
+  ports:
+    - name: dds-unicast
+      port: 7400
+      targetPort: 7400
+      protocol: UDP
+    - name: dds-multicast
+      port: 7401
+      targetPort: 7401
+      protocol: UDP
+{{- end }}
+---
+{{- if .Values.isaacSim.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "digital-twin.fullname" . }}-isaac-sim
+  labels:
+    {{- include "digital-twin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: isaac-sim
+spec:
+  replicas: {{ .Values.isaacSim.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "digital-twin.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: isaac-sim
+  template:
+    metadata:
+      labels:
+        {{- include "digital-twin.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: isaac-sim
+    spec:
+      serviceAccountName: {{ include "digital-twin.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.isaacSim.podSecurityContext | nindent 8 }}
+      containers:
+        - name: isaac-sim
+          securityContext:
+            {{- toYaml .Values.isaacSim.securityContext | nindent 12 }}
+          image: "{{ .Values.isaacSim.image.repository }}:{{ .Values.isaacSim.image.tag }}"
+          imagePullPolicy: {{ .Values.isaacSim.image.pullPolicy }}
+          ports:
+            - name: streaming
+              containerPort: 8211
+              protocol: TCP
+            - name: nucleus
+              containerPort: 8080
+              protocol: TCP
+            - name: livestream
+              containerPort: 48010
+              protocol: TCP
+          env:
+            - name: ACCEPT_EULA
+              value: "Y"
+            - name: OMNI_SERVER
+              value: "0.0.0.0"
+            - name: PRIVACY_CONSENT
+              value: "Y"
+            {{- if .Values.isaacSim.headless }}
+            - name: HEADLESS
+              value: "true"
+            {{- end }}
+          volumeMounts:
+            - name: simulation-data
+              mountPath: /isaac-sim/user
+            - name: models
+              mountPath: /models
+          resources:
+            {{- toYaml .Values.isaacSim.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 120
+            periodSeconds: 30
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            timeoutSeconds: 5
+      volumes:
+        - name: simulation-data
+          persistentVolumeClaim:
+            claimName: {{ include "digital-twin.fullname" . }}-simulation
+        - name: models
+          persistentVolumeClaim:
+            claimName: {{ include "digital-twin.fullname" . }}-models
+      {{- with .Values.isaacSim.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.isaacSim.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "digital-twin.fullname" . }}-isaac-sim
+  labels:
+    {{- include "digital-twin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: isaac-sim
+spec:
+  type: {{ .Values.isaacSim.service.type }}
+  selector:
+    {{- include "digital-twin.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: isaac-sim
+  ports:
+    - name: streaming
+      port: 8211
+      targetPort: 8211
+      protocol: TCP
+    - name: nucleus
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+    - name: livestream
+      port: 48010
+      targetPort: 48010
+      protocol: TCP
+{{- end }}

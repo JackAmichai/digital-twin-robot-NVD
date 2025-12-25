@@ -1,0 +1,248 @@
+{{- if .Values.triton.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "digital-twin.fullname" . }}-triton
+  labels:
+    {{- include "digital-twin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: triton
+spec:
+  {{- if not .Values.triton.autoscaling.enabled }}
+  replicas: {{ .Values.triton.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "digital-twin.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: triton
+  template:
+    metadata:
+      annotations:
+        {{- include "digital-twin.prometheusAnnotations" (dict "metricsPort" "8002" "metricsPath" "/metrics") | nindent 8 }}
+      labels:
+        {{- include "digital-twin.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: triton
+    spec:
+      {{- include "digital-twin.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "digital-twin.serviceAccountName" . }}
+      containers:
+        - name: triton
+          image: "{{ .Values.triton.image.repository }}:{{ .Values.triton.image.tag }}"
+          imagePullPolicy: {{ .Values.triton.image.pullPolicy }}
+          args:
+            - tritonserver
+            - --model-repository={{ .Values.triton.modelRepository.path }}
+            - --model-control-mode=poll
+            - --repository-poll-secs={{ .Values.triton.modelRepository.pollInterval }}
+            - --strict-model-config=false
+            - --log-verbose=1
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+            - name: grpc
+              containerPort: 8001
+              protocol: TCP
+            - name: metrics
+              containerPort: 8002
+              protocol: TCP
+          env:
+            {{- include "digital-twin.nvidiaEnv" . | nindent 12 }}
+            {{- if eq .Values.triton.modelRepository.source "s3" }}
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "digital-twin.fullname" . }}-aws
+                  key: access-key-id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "digital-twin.fullname" . }}-aws
+                  key: secret-access-key
+            {{- end }}
+          resources:
+            {{- toYaml .Values.triton.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /v2/health/live
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /v2/health/ready
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 5
+          volumeMounts:
+            - name: shm
+              mountPath: /dev/shm
+      volumes:
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 8Gi
+      {{- with .Values.nodeSelector.gpu }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations.gpu }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}
+---
+{{- if .Values.riva.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "digital-twin.fullname" . }}-riva
+  labels:
+    {{- include "digital-twin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: riva
+spec:
+  {{- if not .Values.riva.autoscaling.enabled }}
+  replicas: {{ .Values.riva.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "digital-twin.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: riva
+  template:
+    metadata:
+      labels:
+        {{- include "digital-twin.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: riva
+    spec:
+      {{- include "digital-twin.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "digital-twin.serviceAccountName" . }}
+      containers:
+        - name: riva
+          image: "{{ .Values.riva.image.repository }}:{{ .Values.riva.image.tag }}"
+          imagePullPolicy: {{ .Values.riva.image.pullPolicy }}
+          ports:
+            - name: grpc
+              containerPort: 50051
+              protocol: TCP
+          env:
+            {{- include "digital-twin.nvidiaEnv" . | nindent 12 }}
+          resources:
+            {{- toYaml .Values.riva.resources | nindent 12 }}
+          livenessProbe:
+            exec:
+              command:
+                - /bin/bash
+                - -c
+                - "grpc_health_probe -addr=:50051"
+            initialDelaySeconds: 120
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - /bin/bash
+                - -c
+                - "grpc_health_probe -addr=:50051"
+            initialDelaySeconds: 60
+            periodSeconds: 5
+          volumeMounts:
+            - name: riva-models
+              mountPath: /data/models
+            - name: shm
+              mountPath: /dev/shm
+      volumes:
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Gi
+        {{- if .Values.riva.persistence.enabled }}
+        - name: riva-models
+          persistentVolumeClaim:
+            claimName: {{ include "digital-twin.fullname" . }}-riva-models
+        {{- else }}
+        - name: riva-models
+          emptyDir: {}
+        {{- end }}
+      {{- with .Values.nodeSelector.gpu }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations.gpu }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}
+---
+{{- if .Values.nim.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "digital-twin.fullname" . }}-nim
+  labels:
+    {{- include "digital-twin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: nim
+spec:
+  {{- if not .Values.nim.autoscaling.enabled }}
+  replicas: {{ .Values.nim.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "digital-twin.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: nim
+  template:
+    metadata:
+      labels:
+        {{- include "digital-twin.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: nim
+    spec:
+      {{- include "digital-twin.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "digital-twin.serviceAccountName" . }}
+      containers:
+        - name: nim
+          image: "{{ .Values.nim.image.repository }}:{{ .Values.nim.image.tag }}"
+          imagePullPolicy: {{ .Values.nim.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          env:
+            {{- include "digital-twin.nvidiaEnv" . | nindent 12 }}
+            - name: NGC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "digital-twin.fullname" . }}-nvidia
+                  key: ngc-api-key
+          resources:
+            {{- toYaml .Values.nim.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /v1/health/live
+              port: http
+            initialDelaySeconds: 180
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /v1/health/ready
+              port: http
+            initialDelaySeconds: 120
+            periodSeconds: 5
+          volumeMounts:
+            - name: shm
+              mountPath: /dev/shm
+            - name: model-cache
+              mountPath: /opt/nim/.cache
+      volumes:
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Gi
+        - name: model-cache
+          emptyDir:
+            sizeLimit: 50Gi
+      {{- with .Values.nodeSelector.gpu }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations.gpu }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

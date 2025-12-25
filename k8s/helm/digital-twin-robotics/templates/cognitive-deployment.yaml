@@ -1,0 +1,97 @@
+{{- if .Values.cognitive.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "digital-twin.fullname" . }}-cognitive
+  labels:
+    {{- include "digital-twin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cognitive
+spec:
+  {{- if not .Values.cognitive.autoscaling.enabled }}
+  replicas: {{ .Values.cognitive.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "digital-twin.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: cognitive
+  template:
+    metadata:
+      annotations:
+        {{- include "digital-twin.prometheusAnnotations" (dict "metricsPort" "8080" "metricsPath" "/metrics") | nindent 8 }}
+      labels:
+        {{- include "digital-twin.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: cognitive
+        app: cognitive-service
+    spec:
+      {{- include "digital-twin.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "digital-twin.serviceAccountName" . }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: cognitive
+          image: "{{ .Values.cognitive.image.repository }}:{{ .Values.cognitive.image.tag }}"
+          imagePullPolicy: {{ .Values.cognitive.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: grpc
+              containerPort: 50051
+              protocol: TCP
+          env:
+            - name: RIVA_URI
+              value: {{ .Values.cognitive.env.RIVA_URI | quote }}
+            - name: NIM_URI
+              value: {{ .Values.cognitive.env.NIM_URI | quote }}
+            - name: REDIS_HOST
+              value: {{ include "digital-twin.redisHost" . | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.cognitive.env.LOG_LEVEL | quote }}
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            {{- include "digital-twin.nvidiaEnv" . | nindent 12 }}
+          resources:
+            {{- toYaml .Values.cognitive.resources | nindent 12 }}
+          livenessProbe:
+            {{- toYaml .Values.cognitive.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.cognitive.readinessProbe | nindent 12 }}
+          volumeMounts:
+            - name: cache
+              mountPath: /app/cache
+            - name: config
+              mountPath: /app/config
+              readOnly: true
+      volumes:
+        - name: cache
+          emptyDir:
+            sizeLimit: 5Gi
+        - name: config
+          configMap:
+            name: {{ include "digital-twin.fullname" . }}-cognitive-config
+      {{- with .Values.nodeSelector.gpu }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations.gpu }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: cognitive-service
+                topologyKey: topology.kubernetes.io/zone
+{{- end }}

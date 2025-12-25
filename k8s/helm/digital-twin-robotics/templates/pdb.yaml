@@ -1,0 +1,49 @@
+{{- if .Values.podDisruptionBudget.enabled }}
+{{- if .Values.cognitive.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "digital-twin.fullname" . }}-cognitive
+  labels:
+    {{- include "digital-twin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cognitive
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.cognitive.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "digital-twin.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: cognitive
+{{- end }}
+---
+{{- if .Values.riva.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "digital-twin.fullname" . }}-riva
+  labels:
+    {{- include "digital-twin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: riva
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.riva.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "digital-twin.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: riva
+{{- end }}
+---
+{{- if .Values.triton.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "digital-twin.fullname" . }}-triton
+  labels:
+    {{- include "digital-twin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: triton
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.triton.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "digital-twin.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: triton
+{{- end }}
+{{- end }}

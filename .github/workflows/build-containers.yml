@@ -1,0 +1,318 @@
+# Digital Twin Robotics Lab - Container Build Workflow
+#
+# Builds and publishes Docker images for all components with NVIDIA GPU support.
+# Optimized for multi-architecture builds (amd64, arm64).
+
+name: Build Containers
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docker/**'
+      - 'voice_processing/**'
+      - 'robot_control/**'
+      - 'simulation/**'
+      - 'cognitive/**'
+      - 'perception/**'
+  workflow_dispatch:
+    inputs:
+      component:
+        description: 'Component to build (all for everything)'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - voice-processing
+          - robot-control
+          - simulation
+          - cognitive
+          - perception
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository }}
+
+jobs:
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      voice-processing: ${{ steps.filter.outputs.voice-processing }}
+      robot-control: ${{ steps.filter.outputs.robot-control }}
+      simulation: ${{ steps.filter.outputs.simulation }}
+      cognitive: ${{ steps.filter.outputs.cognitive }}
+      perception: ${{ steps.filter.outputs.perception }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Path filter
+        uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            voice-processing:
+              - 'voice_processing/**'
+              - 'docker/Dockerfile.voice'
+            robot-control:
+              - 'robot_control/**'
+              - 'docker/Dockerfile.control'
+            simulation:
+              - 'simulation/**'
+              - 'docker/Dockerfile.simulation'
+            cognitive:
+              - 'cognitive/**'
+              - 'docker/Dockerfile.cognitive'
+            perception:
+              - 'perception/**'
+              - 'docker/Dockerfile.perception'
+
+  build-voice-processing:
+    name: Build Voice Processing
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: >
+      needs.detect-changes.outputs.voice-processing == 'true' ||
+      github.event.inputs.component == 'all' ||
+      github.event.inputs.component == 'voice-processing'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile.voice
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/voice-processing:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/voice-processing:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            CUDA_VERSION=12.2.0
+            RIVA_VERSION=2.14.0
+
+  build-robot-control:
+    name: Build Robot Control
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: >
+      needs.detect-changes.outputs.robot-control == 'true' ||
+      github.event.inputs.component == 'all' ||
+      github.event.inputs.component == 'robot-control'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile.control
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/robot-control:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/robot-control:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            ROS_DISTRO=humble
+
+  build-simulation:
+    name: Build Simulation
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: >
+      needs.detect-changes.outputs.simulation == 'true' ||
+      github.event.inputs.component == 'all' ||
+      github.event.inputs.component == 'simulation'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile.simulation
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/simulation:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/simulation:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            ISAAC_SIM_VERSION=4.2.0
+
+  build-cognitive:
+    name: Build Cognitive
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: >
+      needs.detect-changes.outputs.cognitive == 'true' ||
+      github.event.inputs.component == 'all' ||
+      github.event.inputs.component == 'cognitive'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile.cognitive
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/cognitive:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/cognitive:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build-perception:
+    name: Build Perception
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: >
+      needs.detect-changes.outputs.perception == 'true' ||
+      github.event.inputs.component == 'all' ||
+      github.event.inputs.component == 'perception'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile.perception
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/perception:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/perception:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            CUDA_VERSION=12.2.0
+            TRITON_VERSION=24.01
+
+  vulnerability-scan:
+    name: Vulnerability Scan
+    runs-on: ubuntu-latest
+    needs: 
+      - build-voice-processing
+      - build-robot-control
+      - build-simulation
+      - build-cognitive
+      - build-perception
+    if: always() && !cancelled()
+    permissions:
+      security-events: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Scan voice-processing image
+        uses: aquasecurity/trivy-action@master
+        continue-on-error: true
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/voice-processing:${{ github.sha }}
+          format: 'sarif'
+          output: 'voice-processing-trivy.sarif'
+
+      - name: Upload scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'voice-processing-trivy.sarif'
+          category: 'container-voice-processing'

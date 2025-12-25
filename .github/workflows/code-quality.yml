@@ -1,0 +1,122 @@
+# Digital Twin Robotics Lab - Code Quality Checks
+#
+# Runs on every push and PR to ensure code quality standards.
+
+name: Code Quality
+
+on:
+  push:
+    branches: [main, develop, 'feature/**']
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  python-quality:
+    name: Python Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install ruff black isort mypy
+
+      - name: Ruff Linting
+        run: |
+          ruff check . --output-format=github
+
+      - name: Black Formatting Check
+        run: |
+          black --check --diff .
+
+      - name: isort Import Sorting
+        run: |
+          isort --check-only --diff .
+
+      - name: Type Checking
+        run: |
+          mypy . --ignore-missing-imports || true
+        continue-on-error: true
+
+  yaml-quality:
+    name: YAML Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate YAML files
+        uses: ibiqlik/action-yamllint@v3
+        with:
+          file_or_dir: '.'
+          config_data: |
+            extends: relaxed
+            rules:
+              line-length:
+                max: 200
+              document-start: disable
+
+  dockerfile-quality:
+    name: Dockerfile Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Hadolint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: "docker/Dockerfile.*"
+          failure-threshold: warning
+        continue-on-error: true
+
+  helm-quality:
+    name: Helm Chart Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.13.0
+
+      - name: Lint Helm Charts
+        run: |
+          if [ -d "k8s/helm" ]; then
+            for chart in k8s/helm/*/; do
+              if [ -f "$chart/Chart.yaml" ]; then
+                echo "Linting $chart"
+                helm lint "$chart" || true
+              fi
+            done
+          fi
+
+  commit-lint:
+    name: Commit Message Lint
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check commit messages
+        uses: wagoid/commitlint-github-action@v5
+        with:
+          configFile: .commitlintrc.json
+        continue-on-error: true

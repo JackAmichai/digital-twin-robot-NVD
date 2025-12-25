@@ -1,0 +1,224 @@
+# Digital Twin Robotics Lab - Release Workflow
+#
+# Creates releases with changelogs, versioning, and artifact publishing.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.2.3)'
+        required: true
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        default: 'false'
+        type: boolean
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      upload_url: ${{ steps.release.outputs.upload_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate changelog
+        id: changelog
+        uses: orhun/git-cliff-action@v3
+        with:
+          config: cliff.toml
+          args: --latest --strip header
+        continue-on-error: true
+
+      - name: Create GitHub Release
+        id: release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Release v${{ steps.version.outputs.version }}
+          body: |
+            ## 🚀 Digital Twin Robotics Lab v${{ steps.version.outputs.version }}
+            
+            ### Changes
+            ${{ steps.changelog.outputs.content || 'See commit history for changes.' }}
+            
+            ### Docker Images
+            ```bash
+            # Pull the latest images
+            docker pull ghcr.io/${{ github.repository }}/voice-processing:v${{ steps.version.outputs.version }}
+            docker pull ghcr.io/${{ github.repository }}/robot-control:v${{ steps.version.outputs.version }}
+            docker pull ghcr.io/${{ github.repository }}/simulation:v${{ steps.version.outputs.version }}
+            docker pull ghcr.io/${{ github.repository }}/cognitive:v${{ steps.version.outputs.version }}
+            ```
+            
+            ### Helm Chart
+            ```bash
+            helm repo add digital-twin https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.version }}
+            helm install digital-twin digital-twin/digital-twin-robotics
+            ```
+          draft: false
+          prerelease: ${{ github.event.inputs.prerelease == 'true' }}
+          generate_release_notes: true
+
+  build-release-images:
+    name: Build Release Images
+    runs-on: ubuntu-latest
+    needs: release
+    permissions:
+      packages: write
+
+    strategy:
+      matrix:
+        component:
+          - voice-processing
+          - robot-control
+          - simulation
+          - cognitive
+          - perception
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check if Dockerfile exists
+        id: check
+        run: |
+          COMPONENT="${{ matrix.component }}"
+          DOCKERFILE="docker/Dockerfile.${COMPONENT//-/_}"
+          # Try alternative naming
+          if [ ! -f "$DOCKERFILE" ]; then
+            DOCKERFILE="docker/Dockerfile.${COMPONENT##*-}"
+          fi
+          if [ -f "$DOCKERFILE" ]; then
+            echo "dockerfile=$DOCKERFILE" >> $GITHUB_OUTPUT
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build and push
+        if: steps.check.outputs.exists == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ steps.check.outputs.dockerfile }}
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/${{ matrix.component }}:v${{ needs.release.outputs.version }}
+            ghcr.io/${{ github.repository }}/${{ matrix.component }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  package-helm:
+    name: Package Helm Chart
+    runs-on: ubuntu-latest
+    needs: release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.13.0
+
+      - name: Update chart version
+        run: |
+          if [ -f "k8s/helm/digital-twin-robotics/Chart.yaml" ]; then
+            sed -i "s/^version:.*/version: ${{ needs.release.outputs.version }}/" k8s/helm/digital-twin-robotics/Chart.yaml
+            sed -i "s/^appVersion:.*/appVersion: \"${{ needs.release.outputs.version }}\"/" k8s/helm/digital-twin-robotics/Chart.yaml
+          fi
+
+      - name: Package Helm chart
+        run: |
+          if [ -d "k8s/helm/digital-twin-robotics" ]; then
+            helm package k8s/helm/digital-twin-robotics -d packages/
+          fi
+
+      - name: Upload Helm chart to release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.release.outputs.version }}
+          files: packages/*.tgz
+
+  notify-release:
+    name: Notify Release
+    runs-on: ubuntu-latest
+    needs: [release, build-release-images, package-helm]
+    if: success()
+
+    steps:
+      - name: Send Slack notification
+        uses: slackapi/slack-github-action@v1.24.0
+        if: ${{ secrets.SLACK_WEBHOOK_URL }}
+        with:
+          payload: |
+            {
+              "text": "🎉 New Release: Digital Twin Robotics Lab v${{ needs.release.outputs.version }}",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "🎉 New Release Published!"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Digital Twin Robotics Lab* `v${{ needs.release.outputs.version }}`\n\nNew version has been released and published."
+                  }
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": {"type": "plain_text", "text": "View Release"},
+                      "url": "https://github.com/${{ github.repository }}/releases/tag/v${{ needs.release.outputs.version }}"
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

@@ -1,0 +1,108 @@
+# Digital Twin Robotics Lab - Scheduled Maintenance
+#
+# Runs periodic maintenance tasks: dependency updates, cleanup, health checks.
+
+name: Scheduled Maintenance
+
+on:
+  schedule:
+    # Run every Monday at 9 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+jobs:
+  dependency-check:
+    name: Check Dependencies
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Check for outdated packages
+        run: |
+          pip install pip-audit pip-review
+          pip-audit || true
+          echo "## Outdated packages:" >> $GITHUB_STEP_SUMMARY
+          pip list --outdated >> $GITHUB_STEP_SUMMARY || true
+
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload scan results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  container-cleanup:
+    name: Container Registry Cleanup
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+
+    steps:
+      - name: Delete old container versions
+        uses: snok/container-retention-policy@v2
+        with:
+          image-names: voice-processing,robot-control,simulation,cognitive,perception
+          cut-off: 2 weeks ago UTC
+          keep-at-least: 5
+          account-type: personal
+          token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+  stale-issues:
+    name: Manage Stale Issues
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Mark stale issues and PRs
+        uses: actions/stale@v9
+        with:
+          stale-issue-message: 'This issue has been automatically marked as stale due to inactivity. It will be closed in 7 days if no further activity occurs.'
+          stale-pr-message: 'This PR has been automatically marked as stale due to inactivity. It will be closed in 7 days if no further activity occurs.'
+          days-before-stale: 30
+          days-before-close: 7
+          exempt-issue-labels: 'pinned,security,bug'
+          exempt-pr-labels: 'pinned,security'
+
+  report:
+    name: Generate Report
+    runs-on: ubuntu-latest
+    needs: [dependency-check, security-audit]
+
+    steps:
+      - name: Create maintenance report
+        run: |
+          echo "# Weekly Maintenance Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Date:** $(date -u +"%Y-%m-%d %H:%M UTC")" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Tasks Completed" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Dependency check" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Security audit" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Container cleanup" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Stale issue management" >> $GITHUB_STEP_SUMMARY

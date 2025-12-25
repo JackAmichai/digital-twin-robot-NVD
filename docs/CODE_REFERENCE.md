@@ -19,6 +19,7 @@
 | `features/` | Feature flags | `feature_manager.py` |
 | `experiments/` | A/B testing | `experiment.py` |
 | `core/` | Dependency injection | `container.py` |
+| `resilience/` | Circuit breakers | `circuit_breaker.py` |
 
 ## Module Details
 
@@ -33,3 +34,4 @@ See individual module docs:
 - [Feature Flags](modules/FEATURES.md)
 - [A/B Testing](modules/EXPERIMENTS.md)
 - [Dependency Injection](modules/CORE.md)
+- [Circuit Breakers](modules/RESILIENCE.md)

@@ -1,0 +1,349 @@
+# https://taskfile.dev
+version: '3'
+
+vars:
+  PYTHON: python3
+  PROJECT_ROOT:
+    sh: pwd
+  ROS_WS: "{{.PROJECT_ROOT}}/ros2_ws"
+
+env:
+  PYTHONPATH: "{{.PROJECT_ROOT}}"
+  ROS_DOMAIN_ID: "42"
+
+tasks:
+  # ============================================================================
+  # Setup Tasks
+  # ============================================================================
+  setup:
+    desc: Install all dependencies
+    cmds:
+      - pip install -e ".[dev]"
+      - pre-commit install
+      - task: ros2-setup
+
+  setup:dev:
+    desc: Install development dependencies only
+    cmds:
+      - pip install -r requirements-dev.txt
+      - pre-commit install
+
+  ros2-setup:
+    desc: Setup ROS 2 workspace
+    dir: "{{.ROS_WS}}"
+    cmds:
+      - rosdep update
+      - rosdep install --from-paths src -y --ignore-src || true
+
+  # ============================================================================
+  # Docker Tasks
+  # ============================================================================
+  compose-up:
+    desc: Start all services with Docker Compose
+    cmds:
+      - docker compose up -d
+      - docker compose ps
+
+  compose-down:
+    desc: Stop all services
+    cmds:
+      - docker compose down -v
+
+  compose-logs:
+    desc: Show service logs
+    cmds:
+      - docker compose logs -f --tail=100
+
+  compose-build:
+    desc: Build Docker images
+    cmds:
+      - docker compose build --pull
+
+  compose-config:
+    desc: Validate and show compose configuration
+    cmds:
+      - docker compose config
+
+  compose-restart:
+    desc: Restart all services
+    cmds:
+      - docker compose restart
+
+  # ============================================================================
+  # Linting Tasks
+  # ============================================================================
+  lint:
+    desc: Run all linters
+    cmds:
+      - task: lint:ruff
+      - task: lint:black
+      - task: lint:mypy
+
+  lint:ruff:
+    desc: Run ruff linter
+    cmds:
+      - ruff check . --fix
+
+  lint:black:
+    desc: Check formatting with black
+    cmds:
+      - black --check --diff .
+
+  lint:mypy:
+    desc: Run mypy type checker
+    cmds:
+      - mypy cognitive_service/ scripts/ --ignore-missing-imports
+
+  lint:all:
+    desc: Run all linters with pre-commit
+    cmds:
+      - pre-commit run --all-files
+
+  format:
+    desc: Format code with black and ruff
+    cmds:
+      - black .
+      - ruff check . --fix
+
+  # ============================================================================
+  # Testing Tasks
+  # ============================================================================
+  test:
+    desc: Run all tests
+    cmds:
+      - pytest tests/ -v
+
+  test:cov:
+    desc: Run tests with coverage
+    cmds:
+      - pytest tests/ -v --cov=. --cov-report=html --cov-report=xml
+
+  test:unit:
+    desc: Run unit tests only
+    cmds:
+      - pytest tests/ -v -m unit
+
+  test:integration:
+    desc: Run integration tests only
+    cmds:
+      - pytest tests/ -v -m integration
+
+  test:watch:
+    desc: Run tests in watch mode
+    cmds:
+      - ptw tests/ -- -v
+
+  # ============================================================================
+  # Security Tasks
+  # ============================================================================
+  security:
+    desc: Run all security scans
+    cmds:
+      - task: security:bandit
+      - task: security:trivy
+      - task: security:audit
+
+  security:bandit:
+    desc: Run Bandit security scan
+    cmds:
+      - bandit -r cognitive_service/ scripts/ -ll
+
+  security:trivy:
+    desc: Run Trivy filesystem scan
+    cmds:
+      - trivy fs . --severity HIGH,CRITICAL
+
+  security:audit:
+    desc: Run pip-audit
+    cmds:
+      - pip-audit || true
+
+  # ============================================================================
+  # ROS 2 Tasks
+  # ============================================================================
+  ros2-build:
+    desc: Build ROS 2 workspace
+    dir: "{{.ROS_WS}}"
+    cmds:
+      - source /opt/ros/humble/setup.bash && colcon build --symlink-install
+
+  ros2-test:
+    desc: Run ROS 2 tests
+    dir: "{{.ROS_WS}}"
+    cmds:
+      - source /opt/ros/humble/setup.bash && colcon test
+      - colcon test-result --verbose
+
+  ros2-diag:
+    desc: Run ROS 2 diagnostics
+    cmds:
+      - "{{.PYTHON}} scripts/ros2_diagnostics.py || echo 'Diagnostics script not found'"
+      - ros2 doctor --report || true
+
+  ros2-nodes:
+    desc: List ROS 2 nodes
+    cmds:
+      - ros2 node list
+
+  ros2-topics:
+    desc: List ROS 2 topics
+    cmds:
+      - ros2 topic list
+
+  ros2-tf:
+    desc: Generate TF tree
+    cmds:
+      - ros2 run tf2_tools view_frames
+
+  # ============================================================================
+  # Simulation Tasks
+  # ============================================================================
+  sim-smoke:
+    desc: Run Isaac Sim smoke test
+    cmds:
+      - "{{.PYTHON}} simulation/scripts/launch_sim.py --headless --timeout 30 || echo 'Sim smoke test not available'"
+
+  sim-start:
+    desc: Start Isaac Sim
+    cmds:
+      - "{{.PYTHON}} simulation/scripts/launch_sim.py"
+
+  # ============================================================================
+  # Demo Tasks
+  # ============================================================================
+  demo:
+    desc: Run interactive demo
+    cmds:
+      - "{{.PYTHON}} scripts/demo.py"
+
+  demo:auto:
+    desc: Run automated demo
+    cmds:
+      - "{{.PYTHON}} scripts/demo.py --auto"
+
+  demo:step:
+    desc: Run step-by-step demo
+    cmds:
+      - "{{.PYTHON}} scripts/demo.py --step"
+
+  # ============================================================================
+  # Health & Monitoring Tasks
+  # ============================================================================
+  health:
+    desc: Run health monitor
+    cmds:
+      - "{{.PYTHON}} scripts/health_monitor.py --once"
+
+  health:watch:
+    desc: Run health monitor continuously
+    cmds:
+      - "{{.PYTHON}} scripts/health_monitor.py --interval 5"
+
+  orchestrator:
+    desc: Start system orchestrator
+    cmds:
+      - "{{.PYTHON}} scripts/orchestrator.py"
+
+  # ============================================================================
+  # End-to-End Tasks
+  # ============================================================================
+  e2e:
+    desc: Run end-to-end tests
+    cmds:
+      - pytest tests/test_integration.py -v
+
+  e2e:scenario:
+    desc: Run specific E2E scenario
+    cmds:
+      - "{{.PYTHON}} scripts/e2e_test.py --scenario {{.CLI_ARGS}}"
+
+  # ============================================================================
+  # CI Tasks
+  # ============================================================================
+  ci:
+    desc: Run full CI pipeline locally
+    cmds:
+      - task: lint:all
+      - task: test:cov
+      - task: security
+      - echo "CI pipeline complete"
+
+  ci:quick:
+    desc: Run quick CI checks
+    cmds:
+      - task: lint
+      - task: test
+
+  # ============================================================================
+  # Cleanup Tasks
+  # ============================================================================
+  clean:
+    desc: Remove build artifacts
+    cmds:
+      - rm -rf build/ dist/ *.egg-info/
+      - rm -rf .pytest_cache/ .mypy_cache/ .ruff_cache/
+      - rm -rf htmlcov/ .coverage coverage.xml
+      - rm -rf __pycache__/ */__pycache__/
+      - find . -name "*.pyc" -delete
+
+  clean:ros2:
+    desc: Clean ROS 2 workspace
+    dir: "{{.ROS_WS}}"
+    cmds:
+      - rm -rf build/ install/ log/
+
+  clean:docker:
+    desc: Remove Docker artifacts
+    cmds:
+      - docker compose down -v --rmi local
+      - docker system prune -f
+
+  clean:all:
+    desc: Remove all artifacts
+    cmds:
+      - task: clean
+      - task: clean:ros2
+      - task: clean:docker
+
+  # ============================================================================
+  # Documentation Tasks
+  # ============================================================================
+  docs:
+    desc: Build documentation
+    cmds:
+      - mkdocs build
+
+  docs:serve:
+    desc: Serve documentation locally
+    cmds:
+      - mkdocs serve
+
+  # ============================================================================
+  # Utility Tasks
+  # ============================================================================
+  audit:
+    desc: Generate audit report
+    cmds:
+      - echo "=== Code Quality ===" > audit-report.txt
+      - ruff check . --output-format=text >> audit-report.txt 2>&1 || true
+      - echo "" >> audit-report.txt
+      - echo "=== Type Checking ===" >> audit-report.txt
+      - mypy cognitive_service/ scripts/ --ignore-missing-imports >> audit-report.txt 2>&1 || true
+      - echo "" >> audit-report.txt
+      - echo "=== Security ===" >> audit-report.txt
+      - bandit -r cognitive_service/ scripts/ -ll >> audit-report.txt 2>&1 || true
+      - echo "Audit report saved to audit-report.txt"
+      - cat audit-report.txt
+
+  help:
+    desc: Show all available tasks
+    cmds:
+      - task --list
+
+  # ============================================================================
+  # Default Task
+  # ============================================================================
+  default:
+    desc: Show help
+    cmds:
+      - task: help

@@ -1,0 +1,46 @@
+# Development dependencies for Digital Twin Robotics Lab
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+pytest-mock>=3.12.0
+pytest-timeout>=2.2.0
+
+# Linting & Formatting
+ruff>=0.1.14
+black>=24.1.0
+mypy>=1.8.0
+isort>=5.13.0
+
+# Type stubs
+types-PyYAML>=6.0.0
+types-redis>=4.6.0
+types-requests>=2.31.0
+
+# Security
+bandit[toml]>=1.7.7
+pip-audit>=2.6.0
+safety>=2.3.0
+
+# Pre-commit
+pre-commit>=3.6.0
+
+# Documentation
+mkdocs>=1.5.0
+mkdocs-material>=9.5.0
+mkdocstrings[python]>=0.24.0
+
+# Development utilities
+ipython>=8.0.0
+rich>=13.0.0
+httpx>=0.26.0
+
+# Core dependencies (also in requirements.txt)
+redis>=4.5.0
+aiohttp>=3.9.0
+pyyaml>=6.0.0
+pydantic>=2.5.0
+grpcio>=1.60.0
+openai>=1.0.0
+numpy>=1.24.0

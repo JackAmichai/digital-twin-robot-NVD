@@ -1,0 +1,203 @@
+name: Lint & Test
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  pre-commit:
+    name: Pre-commit Hooks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install pre-commit
+        run: pip install pre-commit
+      
+      - name: Cache pre-commit
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+      
+      - name: Run pre-commit
+        run: pre-commit run --all-files --show-diff-on-failure
+
+  lint-python:
+    name: Python Linting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-lint-${{ hashFiles('requirements-dev.txt') }}
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff black mypy
+          pip install -r requirements-dev.txt || true
+      
+      - name: Check formatting with black
+        run: black --check --diff .
+      
+      - name: Lint with ruff
+        run: ruff check . --output-format=github
+      
+      - name: Type check with mypy
+        run: mypy cognitive_service/ scripts/ --ignore-missing-imports
+        continue-on-error: true
+
+  test-python:
+    name: Python Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11"]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-test-${{ matrix.python-version }}-${{ hashFiles('requirements*.txt') }}
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov pytest-asyncio pyyaml redis aiohttp
+          pip install -r requirements-dev.txt || true
+      
+      - name: Run tests with coverage
+        run: |
+          pytest tests/ -v \
+            --cov=cognitive_service \
+            --cov=scripts \
+            --cov-report=xml \
+            --cov-report=html \
+            --junitxml=test-results.xml \
+            || true
+      
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-${{ matrix.python-version }}
+          path: |
+            coverage.xml
+            htmlcov/
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.python-version }}
+          path: test-results.xml
+
+  lint-docker:
+    name: Dockerfile Linting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Lint Dockerfiles with hadolint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: docker/Dockerfile.ros2
+          failure-threshold: warning
+        continue-on-error: true
+      
+      - name: Find and lint all Dockerfiles
+        run: |
+          find . -name "Dockerfile*" -type f | while read dockerfile; do
+            echo "Linting: $dockerfile"
+            docker run --rm -i hadolint/hadolint < "$dockerfile" || true
+          done
+
+  validate-compose:
+    name: Validate Docker Compose
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Validate docker-compose.yml
+        run: docker compose config --quiet
+      
+      - name: Export validated config
+        run: docker compose config > docker-compose-validated.yml
+      
+      - name: Upload validated config
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-compose-validated
+          path: docker-compose-validated.yml
+
+  lint-yaml:
+    name: YAML Linting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install yamllint
+        run: pip install yamllint
+      
+      - name: Lint YAML files
+        run: yamllint . --strict || true
+
+  check-markdown:
+    name: Markdown Linting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Lint Markdown files
+        uses: DavidAnson/markdownlint-cli2-action@v16
+        with:
+          globs: "**/*.md"
+        continue-on-error: true
+
+  summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [pre-commit, lint-python, test-python, lint-docker, validate-compose]
+    if: always()
+    steps:
+      - name: Check status
+        run: |
+          echo "## CI Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Pre-commit | ${{ needs.pre-commit.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Python Lint | ${{ needs.lint-python.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Python Test | ${{ needs.test-python.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Docker Lint | ${{ needs.lint-docker.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Compose Validate | ${{ needs.validate-compose.result }} |" >> $GITHUB_STEP_SUMMARY

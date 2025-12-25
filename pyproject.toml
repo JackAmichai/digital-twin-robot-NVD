@@ -1,0 +1,230 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "digital-twin-robotics-lab"
+version = "1.0.0"
+description = "Voice-controlled robotics simulation platform"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "Digital Twin Team"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Robotics",
+]
+dependencies = [
+    "redis>=4.5.0",
+    "aiohttp>=3.8.0",
+    "pyyaml>=6.0",
+    "pydantic>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.1.0",
+    "black>=23.0.0",
+    "mypy>=1.5.0",
+    "pre-commit>=3.0.0",
+    "bandit[toml]>=1.7.0",
+    "pip-audit>=2.6.0",
+]
+cognitive = [
+    "grpcio>=1.50.0",
+    "grpcio-tools>=1.50.0",
+    "openai>=1.0.0",
+    "numpy>=1.24.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/JackAmichai/digital-twin-robot-NVD"
+Repository = "https://github.com/JackAmichai/digital-twin-robot-NVD.git"
+Documentation = "https://github.com/JackAmichai/digital-twin-robot-NVD#readme"
+
+# ============================================================================
+# Ruff Configuration
+# ============================================================================
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "*.egg-info",
+    "ros2_ws/build",
+    "ros2_ws/install",
+    "ros2_ws/log",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "ARG",    # flake8-unused-arguments
+    "SIM",    # flake8-simplify
+    "TCH",    # flake8-type-checking
+    "PTH",    # flake8-use-pathlib
+    "ERA",    # eradicate (commented-out code)
+    "PL",     # Pylint
+    "RUF",    # Ruff-specific rules
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "PLR0913", # too many arguments
+    "PLR2004", # magic value comparison
+    "PLR0912", # too many branches
+    "PLR0915", # too many statements
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ARG", "PLR2004"]
+"scripts/*" = ["T201"]  # allow print in scripts
+
+[tool.ruff.lint.isort]
+known-first-party = ["cognitive_service", "scripts"]
+
+# ============================================================================
+# Black Configuration
+# ============================================================================
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311"]
+exclude = '''
+/(
+    \.git
+    | \.venv
+    | venv
+    | __pycache__
+    | build
+    | dist
+    | ros2_ws/build
+    | ros2_ws/install
+    | ros2_ws/log
+)/
+'''
+
+# ============================================================================
+# MyPy Configuration
+# ============================================================================
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+follow_imports = "silent"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = [
+    "redis.*",
+    "grpc.*",
+    "riva.*",
+    "openai.*",
+    "yaml.*",
+]
+ignore_missing_imports = true
+
+# ============================================================================
+# Pytest Configuration
+# ============================================================================
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--tb=short",
+    "-ra",
+]
+asyncio_mode = "auto"
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "slow: Slow tests",
+    "gpu: Tests requiring GPU",
+    "ros2: Tests requiring ROS 2",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+
+# ============================================================================
+# Coverage Configuration
+# ============================================================================
+[tool.coverage.run]
+source = ["cognitive_service", "scripts"]
+branch = true
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "ros2_ws/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@abstractmethod",
+]
+show_missing = true
+fail_under = 60
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+# ============================================================================
+# Bandit Configuration
+# ============================================================================
+[tool.bandit]
+exclude_dirs = ["tests", "venv", ".venv", "ros2_ws"]
+skips = ["B101"]  # assert_used - OK in tests
+
+# ============================================================================
+# Setuptools Configuration
+# ============================================================================
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["cognitive_service*", "scripts*"]
+exclude = ["tests*", "ros2_ws*"]

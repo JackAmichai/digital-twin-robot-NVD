@@ -1,0 +1,90 @@
+{
+  "name": "Digital Twin Robotics Lab",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "runArgs": [
+    "--gpus", "all",
+    "--network", "host",
+    "--privileged",
+    "--env", "DISPLAY=${localEnv:DISPLAY}",
+    "--env", "NVIDIA_VISIBLE_DEVICES=all",
+    "--env", "NVIDIA_DRIVER_CAPABILITIES=all"
+  ],
+  "containerEnv": {
+    "ROS_DOMAIN_ID": "42",
+    "RMW_IMPLEMENTATION": "rmw_fastrtps_cpp",
+    "PYTHONPATH": "/workspaces/digital-twin-robotics-lab"
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11"
+    },
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.black-formatter",
+        "charliermarsh.ruff",
+        "ms-python.mypy-type-checker",
+        "ms-azuretools.vscode-docker",
+        "redhat.vscode-yaml",
+        "tamasfe.even-better-toml",
+        "streetsidesoftware.code-spell-checker",
+        "eamodio.gitlens",
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
+        "ms-iot.vscode-ros",
+        "smilerobotics.urdf",
+        "foxglove.foxglove",
+        "ms-vscode.cmake-tools"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/bin/python3",
+        "python.formatting.provider": "none",
+        "[python]": {
+          "editor.defaultFormatter": "ms-python.black-formatter",
+          "editor.formatOnSave": true,
+          "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+          }
+        },
+        "python.linting.enabled": true,
+        "ruff.lint.run": "onSave",
+        "mypy-type-checker.args": ["--ignore-missing-imports"],
+        "editor.rulers": [100],
+        "files.trimTrailingWhitespace": true,
+        "files.insertFinalNewline": true,
+        "yaml.schemas": {
+          "https://json.schemastore.org/github-workflow.json": ".github/workflows/*.yml"
+        },
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  },
+  "postCreateCommand": "pip install -e '.[dev]' && pre-commit install",
+  "postStartCommand": "source /opt/ros/humble/setup.bash || true",
+  "remoteUser": "vscode",
+  "mounts": [
+    "source=/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind",
+    "source=${localEnv:HOME}/.Xauthority,target=/home/vscode/.Xauthority,type=bind"
+  ],
+  "forwardPorts": [
+    6379,
+    8765,
+    50051,
+    8000
+  ],
+  "portsAttributes": {
+    "6379": {"label": "Redis"},
+    "8765": {"label": "Foxglove Bridge"},
+    "50051": {"label": "Riva gRPC"},
+    "8000": {"label": "NIM API"}
+  }
+}

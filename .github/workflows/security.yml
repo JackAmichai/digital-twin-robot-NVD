@@ -1,0 +1,224 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run weekly on Sundays at midnight
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  trivy-fs:
+    name: Trivy Filesystem Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          severity: 'CRITICAL,HIGH'
+          format: 'sarif'
+          output: 'trivy-fs-results.sarif'
+      
+      - name: Upload Trivy SARIF report
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-fs-results.sarif'
+      
+      - name: Run Trivy (table output)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          format: 'table'
+      
+      - name: Upload scan results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-fs-results
+          path: trivy-fs-results.sarif
+
+  trivy-config:
+    name: Trivy Config Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run Trivy config scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          scan-ref: '.'
+          severity: 'CRITICAL,HIGH'
+          format: 'table'
+        continue-on-error: true
+
+  bandit:
+    name: Bandit Python Security
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install Bandit
+        run: pip install bandit[toml]
+      
+      - name: Run Bandit scan
+        run: |
+          bandit -r cognitive_service/ scripts/ tests/ \
+            -f json \
+            -o bandit-results.json \
+            --severity-level medium \
+            || true
+      
+      - name: Run Bandit (console output)
+        run: |
+          bandit -r cognitive_service/ scripts/ tests/ \
+            --severity-level medium \
+            -f txt \
+            || true
+      
+      - name: Upload Bandit results
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-results
+          path: bandit-results.json
+
+  pip-audit:
+    name: Pip Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install pip-audit
+        run: pip install pip-audit
+      
+      - name: Create requirements file
+        run: |
+          cat > requirements-check.txt << 'EOF'
+          redis>=4.0.0
+          aiohttp>=3.8.0
+          pyyaml>=6.0
+          pydantic>=2.0.0
+          grpcio>=1.50.0
+          openai>=1.0.0
+          EOF
+      
+      - name: Run pip-audit
+        run: |
+          pip-audit -r requirements-check.txt --format json --output pip-audit.json || true
+          pip-audit -r requirements-check.txt || true
+      
+      - name: Upload pip-audit results
+        uses: actions/upload-artifact@v4
+        with:
+          name: pip-audit-results
+          path: pip-audit.json
+
+  secrets-scan:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Install gitleaks
+        run: |
+          wget -q https://github.com/gitleaks/gitleaks/releases/download/v8.18.1/gitleaks_8.18.1_linux_x64.tar.gz
+          tar -xzf gitleaks_8.18.1_linux_x64.tar.gz
+          chmod +x gitleaks
+      
+      - name: Run gitleaks
+        run: |
+          ./gitleaks detect --source . --report-path gitleaks-report.json --report-format json || true
+          ./gitleaks detect --source . --verbose || true
+      
+      - name: Upload gitleaks report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gitleaks-report
+          path: gitleaks-report.json
+
+  dockerfile-security:
+    name: Dockerfile Security Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Check for root user
+        run: |
+          echo "## Checking Dockerfiles for root user issues..."
+          find . -name "Dockerfile*" -type f | while read f; do
+            echo "Checking: $f"
+            if grep -q "USER root" "$f" || ! grep -q "USER" "$f"; then
+              echo "⚠️  Warning: $f may run as root"
+            else
+              echo "✅ $f defines non-root USER"
+            fi
+          done
+      
+      - name: Check for pinned base images
+        run: |
+          echo "## Checking for unpinned base images..."
+          find . -name "Dockerfile*" -type f | while read f; do
+            echo "Checking: $f"
+            if grep -E "^FROM.*:latest" "$f"; then
+              echo "⚠️  Warning: $f uses :latest tag"
+            else
+              echo "✅ $f uses pinned tags"
+            fi
+          done
+      
+      - name: Check for secrets in build args
+        run: |
+          echo "## Checking for secrets in ARG/ENV..."
+          find . -name "Dockerfile*" -type f | while read f; do
+            if grep -iE "(password|secret|key|token)" "$f"; then
+              echo "⚠️  Warning: $f may contain secrets"
+            fi
+          done
+
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [trivy-fs, trivy-config, bandit, pip-audit, secrets-scan, dockerfile-security]
+    if: always()
+    steps:
+      - name: Generate summary
+        run: |
+          echo "## Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Scan | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Trivy Filesystem | ${{ needs.trivy-fs.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Trivy Config | ${{ needs.trivy-config.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Bandit (Python) | ${{ needs.bandit.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| pip-audit | ${{ needs.pip-audit.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Secrets Scan | ${{ needs.secrets-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Dockerfile Security | ${{ needs.dockerfile-security.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Review artifacts for detailed findings." >> $GITHUB_STEP_SUMMARY

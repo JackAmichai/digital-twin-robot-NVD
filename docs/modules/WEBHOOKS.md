@@ -1,25 +1,45 @@
 # Webhook System Module
 
-Event-driven webhook notifications for external integrations.
+Comprehensive event-driven webhook system for real-time notifications to external services and integrations.
+
+## Overview
+
+The webhook system enables real-time event-driven communication between the Digital Twin Robotics Lab platform and external services. When significant events occur (robot connections, task completions, alerts), the system automatically notifies all subscribed endpoints with secure, signed payloads.
 
 ## Features
 
-- **Event Subscriptions**: Subscribe to specific events
-- **HMAC Signatures**: Secure payload verification
-- **Automatic Retries**: Exponential backoff on failures
-- **Delivery Tracking**: Complete audit trail
+- **Event-Driven Architecture**: Subscribe to specific event types for targeted notifications
+- **Secure Delivery**: HMAC-SHA256 payload signatures for authentication and integrity verification
+- **Automatic Retries**: Exponential backoff retry mechanism (3 attempts by default)
+- **Delivery Tracking**: Complete audit trail of all webhook deliveries with status codes
+- **Concurrent Dispatch**: Parallel delivery to multiple subscribers for low latency
+- **Configurable Timeouts**: 30-second default timeout with customizable settings
 
 ## Events
 
-| Event | Description |
-|-------|-------------|
-| `robot.connected` | Robot came online |
-| `robot.disconnected` | Robot went offline |
-| `task.created` | New task assigned |
-| `task.completed` | Task finished successfully |
-| `task.failed` | Task failed |
-| `alert.triggered` | System alert |
-| `maintenance.due` | Maintenance required |
+| Event | Description | Typical Use Case |
+|-------|-------------|------------------|
+| `robot.connected` | Robot came online | Inventory updates, status dashboards |
+| `robot.disconnected` | Robot went offline | Incident response, alerting |
+| `task.created` | New task assigned | Workflow orchestration, logging |
+| `task.completed` | Task finished successfully | Reporting, chained workflows |
+| `task.failed` | Task failed | Error handling, alerting |
+| `alert.triggered` | System alert raised | Monitoring integration (PagerDuty, OpsGenie) |
+| `maintenance.due` | Maintenance required | Scheduling systems, technician dispatch |
+
+## Architecture
+
+```
+┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
+│   Event Source   │────▶│  WebhookManager  │────▶│ External System  │
+│  (Robot, Task)   │     │   (Dispatcher)   │     │  (Slack, PD)     │
+└──────────────────┘     └────────┬─────────┘     └──────────────────┘
+                                  │
+                         ┌────────▼─────────┐
+                         │  Delivery Store  │
+                         │ (Audit History)  │
+                         └──────────────────┘
+```
 
 ## Usage
 

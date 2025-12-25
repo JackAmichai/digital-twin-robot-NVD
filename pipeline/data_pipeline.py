@@ -151,7 +151,7 @@ class Pipeline:
                     await self.sink.write(result)
                     self.metrics.records_processed += 1
                 else:
-                    self.metrics.filtered += 1
+                    self.metrics.records_filtered += 1
             
             await self.sink.flush()
         finally:

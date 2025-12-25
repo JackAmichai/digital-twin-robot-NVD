@@ -1,0 +1,207 @@
+{
+  "configById": {
+    "3D": {
+      "cameraState": {
+        "perspective": true,
+        "distance": 20,
+        "phi": 60,
+        "thetaOffset": 45,
+        "targetOffset": [0, 0, 0],
+        "target": [0, 0, 0],
+        "targetOrientation": [0, 0, 0, 1]
+      },
+      "followMode": "follow-pose",
+      "followTf": "base_link",
+      "scene": {
+        "backgroundColor": "#1a1a2e",
+        "enableStats": false
+      },
+      "transforms": {
+        "showLabel": true,
+        "axisScale": 1
+      },
+      "topics": {
+        "/scan": {
+          "visible": true,
+          "colorMode": "flat",
+          "flatColor": "#00ff88",
+          "pointSize": 3
+        },
+        "/map": {
+          "visible": true,
+          "colorMode": "map",
+          "alpha": 0.7
+        },
+        "/global_costmap/costmap": {
+          "visible": true,
+          "colorMode": "costmap",
+          "alpha": 0.5
+        },
+        "/local_costmap/costmap": {
+          "visible": true,
+          "colorMode": "costmap",
+          "alpha": 0.4
+        },
+        "/plan": {
+          "visible": true,
+          "lineWidth": 3,
+          "gradient": ["#ff6b6b", "#4ecdc4"]
+        },
+        "/goal_pose": {
+          "visible": true,
+          "type": "arrow",
+          "arrowScale": [1.5, 0.3, 0.3],
+          "color": "#ffd93d"
+        },
+        "/cmd_vel": {
+          "visible": true
+        },
+        "/robot_description": {
+          "visible": true
+        }
+      },
+      "layers": {
+        "grid": {
+          "visible": true,
+          "size": 20,
+          "divisions": 20,
+          "lineWidth": 1,
+          "color": "#333344"
+        }
+      },
+      "publish": {
+        "type": "pose",
+        "poseTopic": "/goal_pose",
+        "poseEstimateTopic": "/initialpose",
+        "poseEstimateXDeviation": 0.5,
+        "poseEstimateYDeviation": 0.5,
+        "poseEstimateThetaDeviation": 0.26179938779914943
+      }
+    },
+    "RawMessages-robot-intent": {
+      "topicPath": "/robot_intent"
+    },
+    "RawMessages-system-status": {
+      "topicPath": "/system_status"
+    },
+    "StateTransitions-nav": {
+      "paths": ["/navigate_to_pose/_action/status"],
+      "syncWithOtherPanels": true
+    },
+    "Plot-velocity": {
+      "paths": [
+        {"value": "/cmd_vel.linear.x", "enabled": true, "label": "Linear X"},
+        {"value": "/cmd_vel.angular.z", "enabled": true, "label": "Angular Z"}
+      ],
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "showLegend": true,
+      "legendDisplay": "floating",
+      "showPlotValuesInLegend": true,
+      "isSynced": true,
+      "xAxisVal": "timestamp",
+      "sidebarDimension": 240
+    },
+    "Plot-lidar": {
+      "paths": [
+        {"value": "/scan.ranges[0]", "enabled": true, "label": "Front"},
+        {"value": "/scan.ranges[180]", "enabled": true, "label": "Left"},
+        {"value": "/scan.ranges[360]", "enabled": true, "label": "Back"},
+        {"value": "/scan.ranges[540]", "enabled": true, "label": "Right"}
+      ],
+      "showLegend": true,
+      "xAxisVal": "timestamp"
+    },
+    "Image-camera": {
+      "cameraTopic": "/camera/image_raw",
+      "enabledMarkerTopics": [],
+      "transformMarkers": true,
+      "synchronize": false,
+      "smooth": true,
+      "flipHorizontal": false,
+      "flipVertical": false,
+      "rotation": 0,
+      "minValue": null,
+      "maxValue": null,
+      "colorMode": "gradient",
+      "colorMap": "turbo"
+    },
+    "Log": {
+      "searchTerms": [],
+      "minLogLevel": 1,
+      "topicToRender": "/rosout"
+    },
+    "Indicator-nav-status": {
+      "path": "/navigate_to_pose/_action/status.status_list[-1].status",
+      "style": "background",
+      "fallbackColor": "#444444",
+      "fallbackLabel": "Unknown",
+      "rules": [
+        {"operator": "=", "rawValue": "1", "color": "#0088ff", "label": "ACCEPTED"},
+        {"operator": "=", "rawValue": "2", "color": "#ffaa00", "label": "EXECUTING"},
+        {"operator": "=", "rawValue": "4", "color": "#00ff88", "label": "SUCCEEDED"},
+        {"operator": "=", "rawValue": "5", "color": "#ff4444", "label": "CANCELED"},
+        {"operator": "=", "rawValue": "6", "color": "#ff4444", "label": "ABORTED"}
+      ]
+    },
+    "Teleop": {
+      "topic": "/cmd_vel",
+      "publishRate": 10,
+      "upButton": {"field": "linear-x", "value": 0.5},
+      "downButton": {"field": "linear-x", "value": -0.5},
+      "leftButton": {"field": "angular-z", "value": 0.5},
+      "rightButton": {"field": "angular-z", "value": -0.5}
+    },
+    "Table-diagnostics": {
+      "topicPath": "/diagnostics"
+    }
+  },
+  "globalVariables": {},
+  "userNodes": {},
+  "linkedGlobalVariables": [],
+  "playbackConfig": {
+    "speed": 1,
+    "messageOrder": "receiveTime"
+  },
+  "layout": {
+    "first": {
+      "first": {
+        "direction": "column",
+        "first": "3D",
+        "second": {
+          "first": "Plot-velocity",
+          "second": "Plot-lidar",
+          "direction": "row",
+          "splitPercentage": 50
+        },
+        "splitPercentage": 65
+      },
+      "second": {
+        "direction": "column",
+        "first": "Image-camera",
+        "second": {
+          "first": "Teleop",
+          "second": "Indicator-nav-status",
+          "direction": "row",
+          "splitPercentage": 60
+        },
+        "splitPercentage": 60
+      },
+      "direction": "row",
+      "splitPercentage": 70
+    },
+    "second": {
+      "direction": "column",
+      "first": {
+        "first": "RawMessages-robot-intent",
+        "second": "RawMessages-system-status",
+        "direction": "row",
+        "splitPercentage": 50
+      },
+      "second": "Log",
+      "splitPercentage": 40
+    },
+    "direction": "column",
+    "splitPercentage": 75
+  }
+}

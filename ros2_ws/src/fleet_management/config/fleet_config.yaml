@@ -1,0 +1,170 @@
+# Fleet Management Configuration
+
+# ============================================
+# Traffic Zones Configuration
+# ============================================
+# Define zones where robot access must be coordinated
+
+traffic_zones:
+  # Warehouse intersections (single robot access)
+  intersection_A:
+    center: [5.0, 5.0]
+    radius: 1.5
+    max_robots: 1
+    priority_rules: "first_come_first_serve"  # or "priority_based"
+    
+  intersection_B:
+    center: [10.0, 5.0]
+    radius: 1.5
+    max_robots: 1
+    priority_rules: "first_come_first_serve"
+    
+  intersection_C:
+    center: [15.0, 5.0]
+    radius: 1.5
+    max_robots: 1
+    priority_rules: "first_come_first_serve"
+    
+  intersection_D:
+    center: [5.0, 10.0]
+    radius: 1.5
+    max_robots: 1
+    priority_rules: "first_come_first_serve"
+    
+  intersection_E:
+    center: [10.0, 10.0]
+    radius: 1.5
+    max_robots: 1
+    priority_rules: "first_come_first_serve"
+    
+  intersection_F:
+    center: [15.0, 10.0]
+    radius: 1.5
+    max_robots: 1
+    priority_rules: "first_come_first_serve"
+  
+  # Narrow aisle (extended zone)
+  narrow_aisle_1:
+    center: [7.5, 7.5]
+    radius: 3.0
+    max_robots: 1
+    priority_rules: "priority_based"
+    
+  # Loading dock (allows 2 robots)
+  loading_dock:
+    center: [0.0, 5.0]
+    radius: 2.0
+    max_robots: 2
+    priority_rules: "first_come_first_serve"
+
+# ============================================
+# Collision Avoidance Parameters
+# ============================================
+
+collision_avoidance:
+  # Distance at which emergency stop triggers (meters)
+  emergency_stop_distance: 1.0
+  
+  # Distance at which robots start slowing down (meters)
+  warning_distance: 3.0
+  
+  # Minimum safe distance between robots (meters)
+  safe_distance: 1.5
+  
+  # Speed reduction when approaching another robot
+  # Speed = normal_speed * (1 - proximity_factor)
+  max_speed_reduction: 0.8  # Reduce to 20% speed minimum
+
+# ============================================
+# Fleet Manager Parameters
+# ============================================
+
+fleet_manager:
+  # Heartbeat timeout before marking robot as offline (seconds)
+  heartbeat_timeout: 5.0
+  
+  # Update rate for collision checking (Hz)
+  collision_check_rate: 10.0
+  
+  # Update rate for fleet status publishing (Hz)
+  status_publish_rate: 1.0
+  
+  # Update rate for visualization markers (Hz)
+  visualization_rate: 2.0
+
+# ============================================
+# Robot Agent Parameters
+# ============================================
+
+robot_agent:
+  # Heartbeat interval (seconds)
+  heartbeat_interval: 1.0
+  
+  # Distance to request zone access ahead (meters)
+  zone_request_distance: 3.0
+  
+  # Maximum wait time for zone access before re-planning (seconds)
+  zone_wait_timeout: 30.0
+  
+  # Re-registration interval if no fleet response (seconds)
+  registration_retry_interval: 5.0
+
+# ============================================
+# Robot Priority Levels
+# ============================================
+# Higher number = higher priority
+
+priority_levels:
+  emergency: 100      # Emergency response robots
+  high_priority: 10   # Time-critical deliveries
+  normal: 1           # Standard operations
+  low_priority: 0     # Non-urgent tasks
+  charging: -1        # Robots heading to charge (yield to others)
+
+# ============================================
+# Default Robot Spawn Positions
+# ============================================
+# Staggered positions at charging/staging area
+
+spawn_positions:
+  - robot_id: "amr_001"
+    namespace: "/robot_1"
+    x: 0.0
+    y: 0.0
+    yaw: 0.0
+    priority: 1
+    
+  - robot_id: "amr_002"
+    namespace: "/robot_2"
+    x: 0.0
+    y: 3.0
+    yaw: 0.0
+    priority: 1
+    
+  - robot_id: "amr_003"
+    namespace: "/robot_3"
+    x: 0.0
+    y: 6.0
+    yaw: 0.0
+    priority: 1
+    
+  - robot_id: "amr_004"
+    namespace: "/robot_4"
+    x: 0.0
+    y: 9.0
+    yaw: 0.0
+    priority: 1
+    
+  - robot_id: "amr_005"
+    namespace: "/robot_5"
+    x: 3.0
+    y: 0.0
+    yaw: 0.0
+    priority: 2  # Higher priority robot
+    
+  - robot_id: "amr_006"
+    namespace: "/robot_6"
+    x: 3.0
+    y: 3.0
+    yaw: 0.0
+    priority: 1

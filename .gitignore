@@ -1,0 +1,262 @@
+# =============================================================================
+# Digital Twin Robotics Lab - Git Ignore
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Environment & Secrets
+# -----------------------------------------------------------------------------
+.env
+.env.local
+.env.*.local
+*.secret
+secrets/
+credentials/
+
+# -----------------------------------------------------------------------------
+# Python
+# -----------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+*.manifest
+*.spec
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+pytestdebug.log
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# -----------------------------------------------------------------------------
+# ROS 2
+# -----------------------------------------------------------------------------
+ros2_ws/build/
+ros2_ws/install/
+ros2_ws/log/
+ros2_ws/src/*/build/
+ros2_ws/src/*/install/
+ros2_ws/src/*/log/
+*.bag
+*.db3
+*.mcap
+
+# colcon
+ros2_ws/.colcon/
+
+# ament
+ros2_ws/.ament/
+
+# -----------------------------------------------------------------------------
+# NVIDIA / Isaac Sim
+# -----------------------------------------------------------------------------
+# Cache directories
+.cache/
+**/cache/
+isaac_cache/
+
+# Omniverse
+.nvidia-omniverse/
+_build/
+_compiler/
+_testoutput/
+
+# USD files (keep .usda, ignore binary .usd and .usdc for size)
+# Uncomment if you want to ignore large binary files
+# *.usd
+# *.usdc
+
+# Nucleus local data
+.local/share/ov/
+
+# Kit crash dumps
+crash_dumps/
+*.dmp
+
+# -----------------------------------------------------------------------------
+# Docker
+# -----------------------------------------------------------------------------
+docker-compose.override.yml
+.docker/
+
+# -----------------------------------------------------------------------------
+# IDE & Editors
+# -----------------------------------------------------------------------------
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# JetBrains
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# -----------------------------------------------------------------------------
+# OS Generated
+# -----------------------------------------------------------------------------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# -----------------------------------------------------------------------------
+# Logs & Temporary Files
+# -----------------------------------------------------------------------------
+logs/
+*.log
+*.log.*
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# -----------------------------------------------------------------------------
+# Data & Models (large files)
+# -----------------------------------------------------------------------------
+data/
+models/
+weights/
+*.onnx
+*.pt
+*.pth
+*.h5
+*.hdf5
+*.pb
+*.tflite
+*.ckpt
+*.safetensors
+
+# Keep directory structure
+!data/.gitkeep
+!models/.gitkeep
+
+# -----------------------------------------------------------------------------
+# Media (large files)
+# -----------------------------------------------------------------------------
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.webm
+recordings/
+videos/
+
+# Keep demo videos if specifically added
+!docs/demos/*.gif
+
+# -----------------------------------------------------------------------------
+# Documentation Build
+# -----------------------------------------------------------------------------
+docs/_build/
+site/
+
+# -----------------------------------------------------------------------------
+# Misc
+# -----------------------------------------------------------------------------
+*.pid
+*.seed
+*.pid.lock
+.node_repl_history
+*.tgz

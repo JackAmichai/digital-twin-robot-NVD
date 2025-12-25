@@ -1,0 +1,227 @@
+# =============================================================================
+# Digital Twin Robotics Lab - Docker Compose
+# =============================================================================
+# This orchestrates the 3-layer architecture:
+#   A) Cognitive Service (AI/Speech)
+#   B) Robot Control Stack (ROS 2)
+#   C) Simulation (Isaac Sim)
+# =============================================================================
+
+version: "3.8"
+
+# =============================================================================
+# NETWORKS
+# =============================================================================
+networks:
+  robotics_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+# =============================================================================
+# VOLUMES
+# =============================================================================
+volumes:
+  ros2_ws:
+    driver: local
+  isaac_cache:
+    driver: local
+  riva_models:
+    driver: local
+
+# =============================================================================
+# SERVICES
+# =============================================================================
+services:
+  # ---------------------------------------------------------------------------
+  # Container A: Cognitive Service (The "Brain")
+  # ---------------------------------------------------------------------------
+  # Handles: Speech-to-Text (Riva ASR) + Intent Extraction (LLM)
+  # ---------------------------------------------------------------------------
+  cognitive:
+    image: nvcr.io/nvidia/riva/riva-speech:2.14.0
+    container_name: dt_cognitive
+    hostname: cognitive
+    networks:
+      robotics_net:
+        ipv4_address: 172.28.1.1
+    ports:
+      - "50051:50051"   # Riva gRPC
+      - "8000:8000"     # Riva HTTP
+      - "8001:8001"     # Custom API (intent service)
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    volumes:
+      - ./cognitive_service:/app
+      - riva_models:/data/models
+      - ./config:/config:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+    profiles:
+      - full
+      - cognitive
+
+  # ---------------------------------------------------------------------------
+  # Container B: Robot Control Stack (The "Nervous System")
+  # ---------------------------------------------------------------------------
+  # Handles: ROS 2 Humble + Nav2 + Isaac ROS integration
+  # ---------------------------------------------------------------------------
+  ros2:
+    build:
+      context: ./ros2_ws
+      dockerfile: Dockerfile
+    image: dt_ros2_control:humble
+    container_name: dt_ros2
+    hostname: ros2
+    networks:
+      robotics_net:
+        ipv4_address: 172.28.1.2
+    ports:
+      - "11311:11311"   # ROS Master (legacy compat)
+      - "9090:9090"     # rosbridge websocket
+      - "8765:8765"     # Foxglove bridge
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/config/fastrtps_profile.xml
+      - DISPLAY=${DISPLAY:-:0}
+    volumes:
+      - ./ros2_ws:/ros2_ws
+      - ./config:/config:ro
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "bash", "-c", "source /opt/ros/humble/setup.bash && ros2 topic list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      - cognitive
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    profiles:
+      - full
+      - ros2
+
+  # ---------------------------------------------------------------------------
+  # Container C: Simulation (The "World")
+  # ---------------------------------------------------------------------------
+  # Handles: Isaac Sim + Physics + Sensor Simulation + ROS 2 Bridge
+  # ---------------------------------------------------------------------------
+  isaac_sim:
+    image: nvcr.io/nvidia/isaac-sim:4.2.0
+    container_name: dt_isaac_sim
+    hostname: isaac_sim
+    networks:
+      robotics_net:
+        ipv4_address: 172.28.1.3
+    ports:
+      - "8211:8211"     # Omniverse Streaming (WebRTC)
+      - "8011:8011"     # Omniverse Kit
+      - "8899:8899"     # Nucleus
+      - "47995:47995"   # Live Session
+    environment:
+      - ACCEPT_EULA=Y
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - OMNI_SERVER=http://localhost:8011
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/config/fastrtps_profile.xml
+      - DISPLAY=${DISPLAY:-:0}
+      - PRIVACY_CONSENT=Y
+    volumes:
+      - ./simulation:/isaac-sim/workspace
+      - ./simulation/assets:/isaac-sim/assets
+      - ./config:/config:ro
+      - isaac_cache:/isaac-sim/cache
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8011/status"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 120s
+    depends_on:
+      - ros2
+    restart: unless-stopped
+    profiles:
+      - full
+      - simulation
+
+  # ---------------------------------------------------------------------------
+  # Development Tools
+  # ---------------------------------------------------------------------------
+  
+  # Foxglove Studio - Visualization Dashboard
+  foxglove:
+    image: ghcr.io/foxglove/studio:latest
+    container_name: dt_foxglove
+    hostname: foxglove
+    networks:
+      robotics_net:
+        ipv4_address: 172.28.1.10
+    ports:
+      - "8080:8080"
+    environment:
+      - FOXGLOVE_BRIDGE_HOST=ros2
+      - FOXGLOVE_BRIDGE_PORT=8765
+    depends_on:
+      - ros2
+    restart: unless-stopped
+    profiles:
+      - full
+      - dev-tools
+
+  # Redis - Message Queue / State Store
+  redis:
+    image: redis:7-alpine
+    container_name: dt_redis
+    hostname: redis
+    networks:
+      robotics_net:
+        ipv4_address: 172.28.1.20
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    profiles:
+      - full
+      - dev-tools

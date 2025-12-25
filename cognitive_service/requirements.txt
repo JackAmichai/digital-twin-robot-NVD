@@ -1,0 +1,20 @@
+# =============================================================================
+# Cognitive Service Dependencies
+# =============================================================================
+
+# NVIDIA Riva (ASR)
+nvidia-riva-client>=2.14.0
+
+# LLM / OpenAI-compatible API
+openai>=1.0.0
+
+# Audio processing
+pyaudio>=0.2.13
+sounddevice>=0.4.6
+
+# Message queue
+redis>=5.0.0
+
+# Utilities
+python-dotenv>=1.0.0
+pydantic>=2.0.0

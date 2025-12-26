@@ -1,4 +1,4 @@
-# 🤖 Digital Twin Robotics Lab
+#  Digital Twin Robotics Lab
 
 [![ROS 2](https://img.shields.io/badge/ROS%202-Humble-blue)](https://docs.ros.org/en/humble/)
 [![Isaac Sim](https://img.shields.io/badge/Isaac%20Sim-4.2.0-76B900)](https://developer.nvidia.com/isaac-sim)
